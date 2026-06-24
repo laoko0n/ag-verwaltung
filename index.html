@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AG-Verwaltung</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:15px;color:#1a1a1a;background:#f5f4f0;min-height:100vh}
@@ -34,7 +36,6 @@ button:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 .badge-red{background:#fee2e2;color:#991b1b}
 .badge-gray{background:#f1f0ec;color:#555}
 .badge-purple{background:#ede9fe;color:#5b21b6}
-.badge-orange{background:#ffedd5;color:#9a3412}
 .metric{background:#f5f4f0;border-radius:8px;padding:1rem;text-align:center}
 .metric-num{font-size:26px;font-weight:600}
 .metric-label{font-size:13px;color:#666;margin-top:4px}
@@ -82,14 +83,14 @@ tr:last-child td{border-bottom:none}
 .loading-overlay{position:fixed;inset:0;background:rgba(245,244,240,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:12px}
 .loading-overlay .spinner{width:32px;height:32px;border-width:3px}
 .los-badge{background:#fef9c3;color:#854d0e;border:1px solid #fde047;border-radius:6px;font-size:11px;padding:1px 7px;margin-left:4px}
-.pw-input{text-align:center;font-size:28px;letter-spacing:10px;max-width:160px;margin:0 auto 12px}
+.pw-input{text-align:center;font-size:28px;letter-spacing:10px;max-width:160px;margin:0 auto 12px;display:block}
 </style>
 </head>
 <body>
 
 <div id="loading-overlay" class="loading-overlay">
   <div class="spinner"></div>
-  <div style="font-size:14px;color:#666">Verbinde mit Google Sheets...</div>
+  <div style="font-size:14px;color:#666">Verbinde mit Datenbank...</div>
 </div>
 
 <div id="alert-box" class="alert" style="position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:999;min-width:260px;max-width:90vw;box-shadow:0 2px 8px rgba(0,0,0,0.12)"></div>
@@ -104,7 +105,7 @@ tr:last-child td{border-bottom:none}
       <div class="sync-dot" id="sync-dot"></div>
       <span id="sync-text">Verbinde...</span>
       <div style="flex:1"></div>
-      <button class="small" onclick="syncVonSheets(true)">🔄</button>
+      <button class="small" onclick="ladeAlles()">🔄</button>
     </div>
     <div class="role-grid">
       <div class="role-card" onclick="goPage('login-admin')">
@@ -171,7 +172,7 @@ tr:last-child td{border-bottom:none}
     <div class="sync-dot" id="admin-sync-dot"></div>
     <span id="admin-sync-text">–</span>
     <div style="flex:1"></div>
-    <button class="small" onclick="syncVonSheets(true)">🔄 Aktualisieren</button>
+    <button class="small" onclick="ladeAlles()">🔄 Aktualisieren</button>
   </div>
   <div class="tabs">
     <button class="tab active" onclick="adminTab('ags')">AGs verwalten</button>
@@ -179,12 +180,11 @@ tr:last-child td{border-bottom:none}
     <button class="tab" onclick="adminTab('uebersicht')">Gesamtübersicht</button>
   </div>
 
-  <!-- AGs -->
   <div id="admin-ags">
     <div class="card">
       <div class="section-title">Neue AG anlegen</div>
       <div class="grid2" style="margin-bottom:10px">
-        <div><div class="label">AG-Name</div><input id="ag-name" type="text" placeholder="z.B. Core AG" /></div>
+        <div><div class="label">AG-Name</div><input id="ag-name" type="text" placeholder="z.B. Kunst 9+10" /></div>
         <div><div class="label">Typ</div>
           <select id="ag-typ" onchange="toggleAGTyp()">
             <option value="uebergreifend">Klassenübergreifend</option>
@@ -228,7 +228,6 @@ tr:last-child td{border-bottom:none}
     <div id="ag-liste-container"><div class="empty">Noch keine AGs angelegt.</div></div>
   </div>
 
-  <!-- Klassen -->
   <div id="admin-klassen" style="display:none">
     <div class="card">
       <div class="section-title">Klassen anlegen</div>
@@ -241,7 +240,6 @@ tr:last-child td{border-bottom:none}
     <div id="klassen-liste"><div class="empty">Noch keine Klassen angelegt.</div></div>
   </div>
 
-  <!-- Übersicht -->
   <div id="admin-uebersicht" style="display:none">
     <div class="grid3" style="margin-bottom:1.5rem">
       <div class="metric"><div class="metric-num" id="stat-s">0</div><div class="metric-label">Schüler gesamt</div></div>
@@ -263,7 +261,7 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
-<!-- LEHRER: Eintragen -->
+<!-- LEHRER -->
 <div id="page-lehrer-eintragen" class="page">
   <div class="nav">
     <button onclick="goPage('start')" class="small">← Abmelden</button>
@@ -301,200 +299,147 @@ tr:last-child td{border-bottom:none}
 </div>
 
 <script>
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyorwJCSoJ3W0jcbtvJSoxq67prXh9vSWGzlGCivQ4BCqbvVuY6prDb4XPK3FwB12LD/exec';
-var ADMIN_PW = '742';
+// ─── FIREBASE SETUP ───────────────────────────────────────────────────────────
+const firebaseConfig = {
+  databaseURL: "https://ag-verwaltung-default-rtdb.europe-west1.firebasedatabase.app"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
+// ─── STATE ────────────────────────────────────────────────────────────────────
 var state = {ags:[], klassen:[], schueler:[], passwoerter:{}};
-// zuteilungen: {schuelerId: agId|null} – Ergebnis des Losverfahrens
 var aktiveKlasse = null;
 var neueAgKontingente = [];
 var neueAgEigenKlassen = [];
-var isSaving = false;
+var ADMIN_PW = '742';
 
-// ─── SYNC ─────────────────────────────────────────────────────────────────────
-function setSyncStatus(dotId, textId, status, msg) {
-  var dot=document.getElementById(dotId), txt=document.getElementById(textId);
-  if(!dot||!txt) return;
-  dot.className='sync-dot'+(status?' '+status:'');
-  txt.textContent=msg;
-}
-function allSync(status,msg){
-  ['sync','admin-sync','let-sync'].forEach(function(id){
-    setSyncStatus(id+'-dot',id+'-text',status,msg);
-  });
-}
-
-async function syncVonSheets(feedback){
-  allSync('loading','Verbinde...');
-  try{
-    var res=await fetch(SCRIPT_URL+'?action=getAll');
-    var data=await res.json();
-    if(data.error) throw new Error(data.error);
-    // Passwörter immer als String speichern (Google Sheets gibt Zahlen zurück)
-    var pw = data.passwoerter||{};
-    Object.keys(pw).forEach(function(k){ pw[k]=String(pw[k]); });
-    state={
-      ags:data.ags||[], klassen:data.klassen||[],
-      schueler:data.schueler||[], passwoerter:pw
+// ─── FIREBASE LESEN/SCHREIBEN ─────────────────────────────────────────────────
+async function ladeAlles(feedback) {
+  setSyncStatus('loading', 'Lädt...');
+  try {
+    var snap = await db.ref('/').once('value');
+    var data = snap.val() || {};
+    state = {
+      ags: data.ags ? Object.values(data.ags) : [],
+      klassen: data.klassen ? Object.values(data.klassen) : [],
+      schueler: data.schueler ? Object.values(data.schueler) : [],
+      passwoerter: data.passwoerter || {}
     };
-    var t=new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    allSync('ok','Verbunden – Stand: '+t);
+    // Passwörter immer als String
+    Object.keys(state.passwoerter).forEach(function(k){
+      state.passwoerter[k] = String(state.passwoerter[k]);
+    });
+    var t = new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    setSyncStatus('ok', 'Verbunden – Stand: '+t);
     if(feedback) showAlert('Daten aktualisiert ✓','ok');
-    renderKlassenGrid();
     renderAGListe();
     renderAdminKlassen();
-  }catch(e){
-    allSync('err','Keine Verbindung zu Google Sheets');
+  } catch(e) {
+    setSyncStatus('err', 'Verbindungsfehler: '+e.message);
     if(feedback) showAlert('Fehler: '+e.message,'err');
   }
 }
 
-async function syncNachSheets(){
-  if(isSaving) return;
-  isSaving=true;
-  allSync('loading','Speichert...');
-  try{
-    var url=SCRIPT_URL+'?action=saveAll&state='+encodeURIComponent(JSON.stringify(state));
-    var res=await fetch(url);
-    var data=await res.json();
-    if(data.error) throw new Error(data.error);
-    var t=new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    allSync('ok','Gespeichert – '+t);
-  }catch(e){
-    allSync('err','Fehler beim Speichern');
-    showAlert('Speicherfehler: '+e.message,'err');
-  }
-  isSaving=false;
+async function speichereAGs() {
+  var obj = {};
+  state.ags.forEach(function(ag,i){ obj['ag_'+i] = ag; });
+  await db.ref('/ags').set(obj);
+}
+async function speichereKlassen() {
+  var obj = {};
+  state.klassen.forEach(function(k,i){ obj['k_'+i] = k; });
+  await db.ref('/klassen').set(obj);
+  await db.ref('/passwoerter').set(state.passwoerter);
+}
+async function speichereSchueler() {
+  var obj = {};
+  state.schueler.forEach(function(s,i){ obj['s_'+i] = s; });
+  await db.ref('/schueler').set(obj);
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
 function showAlert(msg,type){
   var b=document.getElementById('alert-box');
   b.className='alert alert-'+(type||'ok'); b.textContent=msg; b.style.display='block';
   clearTimeout(b._t); b._t=setTimeout(function(){b.style.display='none';},4000);
 }
-function jahrgang(k){var m=k.match(/^(\d+)/);return m?parseInt(m[1]):null;}
+
+function setSyncStatus(status,msg){
+  ['sync','admin-sync','let-sync'].forEach(function(id){
+    var dot=document.getElementById(id+'-dot');
+    var txt=document.getElementById(id+'-text');
+    if(dot) dot.className='sync-dot'+(status?' '+status:'');
+    if(txt) txt.textContent=msg;
+  });
+}
+
+function jahrgang(k){var m=String(k).match(/^(\d+)/);return m?parseInt(m[1]):null;}
 
 function getKontFuerKlasse(ag,klasse){
   var jg=jahrgang(klasse);
   if(ag.typ==='eigen'){
-    var ek=ag.eigenKlassen.find(function(e){return e.klasse===klasse;});
+    var ek=(ag.eigenKlassen||[]).find(function(e){return e.klasse===klasse;});
     return ek?[{von:jg,bis:jg,max:ek.max}]:[];
   }
   if(jg===null) return [];
-  return ag.kontingente.filter(function(k){return jg>=k.von&&jg<=k.bis;});
+  return (ag.kontingente||[]).filter(function(k){return jg>=k.von&&jg<=k.bis;});
 }
 function agVerfuegbar(ag,klasse){return getKontFuerKlasse(ag,klasse).length>0;}
 
 function belegtInKont(ag,k){
-  // Zählt nur Schüler mit zugeteilter AG (zuteilung[id]===ag.id)
   return state.schueler.filter(function(s){
     var jg=jahrgang(s.klasse);
     if(jg===null||jg<k.von||jg>k.bis) return false;
     return s.zuteilung===ag.id;
   }).length;
 }
-function maxInKont(ag,klasse){
-  var konts=getKontFuerKlasse(ag,klasse);
-  return konts.reduce(function(s,k){return s+k.max;},0);
-}
-function belegtFuerKlasse(ag,klasse){
-  var konts=getKontFuerKlasse(ag,klasse);
-  return konts.reduce(function(s,k){return s+belegtInKont(ag,k);},0);
-}
 
 function getAGById(id){return state.ags.find(function(a){return a.id===id;});}
 function getAGNameById(id){var ag=getAGById(id);return ag?ag.name:'–';}
 function getWahl(s,prio){
-  var w=s.wuensche.find(function(w){return w.prio===prio;});
+  var w=(s.wuensche||[]).find(function(w){return w.prio===prio;});
   return w?getAGNameById(w.agId):'–';
-}
-function getZuteilungName(s){
-  if(!s.zuteilung) return '<span style="color:#b91c1c">Keine Zuteilung</span>';
-  return esc(getAGNameById(s.zuteilung));
 }
 
 // ─── LOSVERFAHREN ─────────────────────────────────────────────────────────────
-// Wird aufgerufen nachdem ein neuer Schüler eingetragen wurde.
-// Prüft ob seine 1. Wahl voll ist und löst ggf. aus.
-function losverfahrenDurchfuehren(neuerSchueler){
-  var protokoll = [];
-  // Starte mit dem neuen Schüler bei seiner 1. Wahl
-  var warteschlange = [{schueler: neuerSchueler, wunschPrio: 1}];
-
-  var MAX_RUNDEN = 50; // Sicherheitsbremse
-  var runde = 0;
-
-  while(warteschlange.length > 0 && runde < MAX_RUNDEN){
-    runde++;
-    var aufgabe = warteschlange.shift();
-    var s = aufgabe.schueler;
-    var prio = aufgabe.wunschPrio;
-
-    // Wunsch-AG für diese Priorität finden
-    var wunsch = s.wuensche.find(function(w){return w.prio===prio;});
-    if(!wunsch){
-      // Keine weiteren Wünsche – Schüler bleibt ohne Zuteilung
-      s.zuteilung = null;
-      protokoll.push(s.vorname+' '+s.nachname+' hat keine weiteren Wünsche → keine Zuteilung');
-      continue;
-    }
-
-    var ag = getAGById(wunsch.agId);
-    if(!ag){
-      // AG nicht gefunden – nächsten Wunsch versuchen
-      warteschlange.push({schueler:s, wunschPrio:prio+1});
-      continue;
-    }
-
-    // Prüfen ob AG für diese Klasse verfügbar
-    var konts = getKontFuerKlasse(ag, s.klasse);
-    if(!konts.length){
-      warteschlange.push({schueler:s, wunschPrio:prio+1});
-      continue;
-    }
-
-    var maxPlätze = konts.reduce(function(sum,k){return sum+k.max;},0);
-
-    // Alle aktuell in dieser AG zugeteilten Schüler (gleiche Jahrgangsgruppe)
-    var bereitsZugeteilt = state.schueler.filter(function(x){
+function losverfahren(neuerSchueler){
+  var warteschlange=[{schueler:neuerSchueler,prio:1}];
+  var runden=0;
+  while(warteschlange.length>0&&runden<50){
+    runden++;
+    var aufgabe=warteschlange.shift();
+    var s=aufgabe.schueler;
+    var prio=aufgabe.prio;
+    var wunsch=(s.wuensche||[]).find(function(w){return w.prio===prio;});
+    if(!wunsch){s.zuteilung=null;continue;}
+    var ag=getAGById(wunsch.agId);
+    if(!ag){warteschlange.push({schueler:s,prio:prio+1});continue;}
+    var konts=getKontFuerKlasse(ag,s.klasse);
+    if(!konts.length){warteschlange.push({schueler:s,prio:prio+1});continue;}
+    var maxP=konts.reduce(function(sum,k){return sum+k.max;},0);
+    var zugeteilt=state.schueler.filter(function(x){
       if(x.id===s.id) return false;
       var jg=jahrgang(x.klasse);
-      var passt=konts.some(function(k){return jg>=k.von&&jg<=k.bis;});
-      return passt && x.zuteilung===ag.id;
+      return konts.some(function(k){return jg>=k.von&&jg<=k.bis;})&&x.zuteilung===ag.id;
     });
-
-    if(bereitsZugeteilt.length < maxPlätze){
-      // Platz frei – direkt zuteilen
-      s.zuteilung = ag.id;
-      protokoll.push(s.vorname+' '+s.nachname+' → '+ag.name+' (Platz frei)');
+    if(zugeteilt.length<maxP){
+      s.zuteilung=ag.id;
     } else {
-      // AG voll – alle Bewerber inkl. neuen Schüler losen
-      var alleBewerber = bereitsZugeteilt.concat([s]);
-      // Zufällig mischen
-      for(var i=alleBewerber.length-1;i>0;i--){
+      var bewerber=zugeteilt.concat([s]);
+      for(var i=bewerber.length-1;i>0;i--){
         var j=Math.floor(Math.random()*(i+1));
-        var tmp=alleBewerber[i]; alleBewerber[i]=alleBewerber[j]; alleBewerber[j]=tmp;
+        var tmp=bewerber[i];bewerber[i]=bewerber[j];bewerber[j]=tmp;
       }
-      // Erste maxPlätze bekommen den Platz
-      var gewinner = alleBewerber.slice(0, maxPlätze);
-      var verlierer = alleBewerber.slice(maxPlätze);
-
-      gewinner.forEach(function(g){ g.zuteilung=ag.id; });
-      protokoll.push('Los in '+ag.name+': Gewinner: '+gewinner.map(function(g){return g.vorname+' '+g.nachname;}).join(', '));
-
-      // Verlierer zur nächsten Wunsch-Priorität
-      verlierer.forEach(function(v){
+      bewerber.slice(0,maxP).forEach(function(g){g.zuteilung=ag.id;});
+      bewerber.slice(maxP).forEach(function(v){
         v.zuteilung=null;
-        var naechstePrio=v.wuensche.find(function(w){return w.agId===ag.id;});
-        var naechste = naechstePrio ? naechstePrio.prio+1 : prio+1;
-        protokoll.push(v.vorname+' '+v.nachname+' verliert Los → versucht Wunsch '+naechste);
-        warteschlange.push({schueler:v, wunschPrio:naechste});
+        var vPrio=(v.wuensche||[]).find(function(w){return w.agId===ag.id;});
+        warteschlange.push({schueler:v,prio:vPrio?vPrio.prio+1:prio+1});
       });
     }
   }
-  return protokoll;
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -504,9 +449,8 @@ function goPage(name){
   if(name==='login-lehrer') befuelleKlassenSelect();
   if(name==='admin'){renderAGListe();renderAdminKlassen();}
   if(name==='lehrer-eintragen') renderLehrerPage();
-  if(name==='start') syncVonSheets(false);
+  if(name==='start') ladeAlles(false);
 }
-
 function adminTab(name){
   ['ags','klassen','uebersicht'].forEach(function(t,i){
     document.getElementById('admin-'+t).style.display=t===name?'block':'none';
@@ -519,12 +463,10 @@ function adminTab(name){
 function checkAdminPw(){
   var inp=document.getElementById('admin-pw-input');
   var fehler=document.getElementById('admin-pw-fehler');
-  if(inp.value.trim()===String(ADMIN_PW).trim()){
-    fehler.style.display='none'; inp.value='';
-    goPage('admin'); renderAGListe(); renderAdminKlassen();
-  } else {
-    fehler.style.display='block'; inp.value='';
-  }
+  if(inp.value.trim()===String(ADMIN_PW)){
+    fehler.style.display='none';inp.value='';
+    goPage('admin');
+  }else{fehler.style.display='block';inp.value='';}
 }
 function befuelleKlassenSelect(){
   var sel=document.getElementById('lehrer-klasse-select');
@@ -536,13 +478,11 @@ function checkLehrerPw(){
   var inp=document.getElementById('lehrer-pw-input');
   var fehler=document.getElementById('lehrer-pw-fehler');
   if(!klasse){fehler.textContent='❌ Bitte zuerst eine Klasse wählen.';fehler.style.display='block';return;}
-  var richtig=state.passwoerter&&state.passwoerter[klasse];
-  if(inp.value.trim()===String(richtig).trim()){
-    fehler.style.display='none'; inp.value='';
-    aktiveKlasse=klasse; goPage('lehrer-eintragen');
-  } else {
-    fehler.style.display='block'; fehler.textContent='❌ Falsches Passwort'; inp.value='';
-  }
+  var richtig=state.passwoerter&&state.passwoerter[klasse]?String(state.passwoerter[klasse]):'';
+  if(inp.value.trim()===richtig){
+    fehler.style.display='none';inp.value='';
+    aktiveKlasse=klasse;goPage('lehrer-eintragen');
+  }else{fehler.style.display='block';fehler.textContent='❌ Falsches Passwort';inp.value='';}
 }
 
 // ─── AG TYP ───────────────────────────────────────────────────────────────────
@@ -560,7 +500,9 @@ function renderEigenKlassenSelect(){
 function renderNeueKontingente(){
   document.getElementById('ag-kontingente-liste').innerHTML=
     neueAgKontingente.map(function(k,i){
-      return '<div class="row" style="margin-bottom:6px"><span class="badge badge-purple">Jg. '+k.von+'–'+k.bis+'</span><span style="font-size:13px">max. '+k.max+' Plätze</span><button class="small danger" onclick="removeKontingent('+i+')">×</button></div>';
+      return '<div class="row" style="margin-bottom:6px"><span class="badge badge-purple">Jg. '+k.von+'–'+k.bis+'</span>'
+        +'<span style="font-size:13px">max. '+k.max+' Plätze</span>'
+        +'<button class="small danger" onclick="removeKontingent('+i+')">×</button></div>';
     }).join('');
 }
 function addKontingent(){
@@ -570,7 +512,7 @@ function addKontingent(){
   if(von>bis){showAlert('Von muss ≤ Bis sein.','err');return;}
   for(var i=0;i<neueAgKontingente.length;i++){
     var k=neueAgKontingente[i];
-    if(!(bis<k.von||von>k.bis)){showAlert('Überschneidung mit bestehendem Band.','err');return;}
+    if(!(bis<k.von||von>k.bis)){showAlert('Überschneidung!','err');return;}
   }
   neueAgKontingente.push({von:von,bis:bis,max:max});
   renderNeueKontingente();
@@ -579,7 +521,8 @@ function removeKontingent(i){neueAgKontingente.splice(i,1);renderNeueKontingente
 function renderNeueEigenKlassen(){
   document.getElementById('eigen-klassen-chips').innerHTML=
     neueAgEigenKlassen.map(function(e,i){
-      return '<span class="ag-chip">'+esc(e.klasse)+' (max.'+e.max+')<button class="ag-chip-del" onclick="removeEigenKlasse('+i+')">×</button></span>';
+      return '<span class="ag-chip">'+esc(e.klasse)+' (max.'+e.max+')'
+        +'<button class="ag-chip-del" onclick="removeEigenKlasse('+i+')">×</button></span>';
     }).join('');
 }
 function addEigenKlasse(){
@@ -592,7 +535,7 @@ function addEigenKlasse(){
 }
 function removeEigenKlasse(i){neueAgEigenKlassen.splice(i,1);renderNeueEigenKlassen();}
 
-// ─── ADMIN: AG ANLEGEN ────────────────────────────────────────────────────────
+// ─── ADMIN: AG ────────────────────────────────────────────────────────────────
 async function addAG(){
   var name=document.getElementById('ag-name').value.trim();
   var typ=document.getElementById('ag-typ').value;
@@ -600,39 +543,58 @@ async function addAG(){
   if(state.ags.some(function(a){return a.name.toLowerCase()===name.toLowerCase();})){showAlert('AG existiert bereits.','err');return;}
   if(typ==='uebergreifend'&&!neueAgKontingente.length){showAlert('Bitte mindestens eine Jahrgangsgruppe anlegen.','err');return;}
   if(typ==='eigen'&&!neueAgEigenKlassen.length){showAlert('Bitte mindestens eine Klasse hinzufügen.','err');return;}
-  state.ags.push({id:Date.now()+Math.random(),name:name,typ:typ,
+  state.ags.push({
+    id:'ag_'+Date.now(),
+    name:name,typ:typ,
     kontingente:typ==='uebergreifend'?neueAgKontingente.slice():[],
-    eigenKlassen:typ==='eigen'?neueAgEigenKlassen.slice():[]});
+    eigenKlassen:typ==='eigen'?neueAgEigenKlassen.slice():[]
+  });
   neueAgKontingente=[];neueAgEigenKlassen=[];
   document.getElementById('ag-name').value='';
-  renderNeueKontingente();renderNeueEigenKlassen();renderAGListe();
-  showAlert('AG "'+name+'" angelegt.','ok');
-  await syncNachSheets();
+  renderNeueKontingente();renderNeueEigenKlassen();
+  setSyncStatus('loading','Speichert...');
+  try{
+    await speichereAGs();
+    setSyncStatus('ok','Gespeichert ✓');
+    showAlert('AG "'+name+'" angelegt.','ok');
+  }catch(e){setSyncStatus('err','Fehler');showAlert('Fehler: '+e.message,'err');}
+  renderAGListe();
 }
+
 async function deleteAG(id){
   if(!confirm('AG wirklich löschen?')) return;
   state.ags=state.ags.filter(function(a){return a.id!==id;});
   state.schueler.forEach(function(s){
-    s.wuensche=s.wuensche.filter(function(w){return w.agId!==id;});
+    s.wuensche=(s.wuensche||[]).filter(function(w){return w.agId!==id;});
     if(s.zuteilung===id) s.zuteilung=null;
   });
-  renderAGListe(); await syncNachSheets();
+  setSyncStatus('loading','Speichert...');
+  try{
+    await speichereAGs();
+    await speichereSchueler();
+    setSyncStatus('ok','Gespeichert ✓');
+  }catch(e){setSyncStatus('err','Fehler');showAlert('Fehler: '+e.message,'err');}
+  renderAGListe();
 }
+
 async function aendereKontingentMax(agId,ki,val){
   var ag=state.ags.find(function(a){return a.id===agId;});
   if(!ag) return;
-  var neu=parseInt(val); if(isNaN(neu)||neu<1){showAlert('Ungültige Zahl.','err');renderAGListe();return;}
+  var neu=parseInt(val);
+  if(isNaN(neu)||neu<1){showAlert('Ungültige Zahl.','err');renderAGListe();return;}
   ag.kontingente[ki].max=neu;
-  showAlert('Max. auf '+neu+' geändert.','ok');
-  await syncNachSheets(); renderAGListe();
+  try{await speichereAGs();showAlert('Gespeichert.','ok');}catch(e){showAlert('Fehler: '+e.message,'err');}
+  renderAGListe();
 }
+
 async function aendereEigenMax(agId,eki,val){
   var ag=state.ags.find(function(a){return a.id===agId;});
   if(!ag) return;
-  var neu=parseInt(val); if(isNaN(neu)||neu<1){showAlert('Ungültige Zahl.','err');renderAGListe();return;}
+  var neu=parseInt(val);
+  if(isNaN(neu)||neu<1){showAlert('Ungültige Zahl.','err');renderAGListe();return;}
   ag.eigenKlassen[eki].max=neu;
-  showAlert('Max. auf '+neu+' geändert.','ok');
-  await syncNachSheets(); renderAGListe();
+  try{await speichereAGs();showAlert('Gespeichert.','ok');}catch(e){showAlert('Fehler: '+e.message,'err');}
+  renderAGListe();
 }
 
 function renderAGListe(){
@@ -641,7 +603,7 @@ function renderAGListe(){
   el.innerHTML=state.ags.map(function(ag){
     var isUe=ag.typ==='uebergreifend';
     var kontInfo=isUe
-      ?ag.kontingente.map(function(k,ki){
+      ?(ag.kontingente||[]).map(function(k,ki){
           var belegt=belegtInKont(ag,k);
           var pct=Math.round(belegt/k.max*100);
           var cls=pct>=100?'full':pct>=80?'warn':'';
@@ -649,9 +611,9 @@ function renderAGListe(){
             +'<span style="font-size:13px;min-width:60px">'+belegt+'/'+k.max+'</span>'
             +'<div class="auslastung-bar"><div class="progress"><div class="progress-bar '+cls+'" style="width:'+Math.min(pct,100)+'%"></div></div></div>'
             +'<span class="badge '+(pct>=100?'badge-red':pct>=80?'badge-warn':'badge-green')+'" style="min-width:38px;text-align:center">'+pct+'%</span>'
-            +'<input type="number" min="1" value="'+k.max+'" style="width:65px;padding:4px 6px;font-size:13px" onchange="aendereKontingentMax('+ag.id+','+ki+',this.value)" /></div>';
+            +'<input type="number" min="1" value="'+k.max+'" style="width:65px;padding:4px 6px;font-size:13px" onchange="aendereKontingentMax(\''+ag.id+'\','+ki+',this.value)" /></div>';
         }).join('')
-      :ag.eigenKlassen.map(function(ek,eki){
+      :(ag.eigenKlassen||[]).map(function(ek,eki){
           var belegt=state.schueler.filter(function(s){return s.klasse===ek.klasse&&s.zuteilung===ag.id;}).length;
           var pct=Math.round(belegt/ek.max*100);
           var cls=pct>=100?'full':pct>=80?'warn':'';
@@ -659,12 +621,12 @@ function renderAGListe(){
             +'<span style="font-size:13px;min-width:60px">'+belegt+'/'+ek.max+'</span>'
             +'<div class="auslastung-bar"><div class="progress"><div class="progress-bar '+cls+'" style="width:'+Math.min(pct,100)+'%"></div></div></div>'
             +'<span class="badge '+(pct>=100?'badge-red':pct>=80?'badge-warn':'badge-green')+'" style="min-width:38px;text-align:center">'+pct+'%</span>'
-            +'<input type="number" min="1" value="'+ek.max+'" style="width:65px;padding:4px 6px;font-size:13px" onchange="aendereEigenMax('+ag.id+','+eki+',this.value)" /></div>';
+            +'<input type="number" min="1" value="'+ek.max+'" style="width:65px;padding:4px 6px;font-size:13px" onchange="aendereEigenMax(\''+ag.id+'\','+eki+',this.value)" /></div>';
         }).join('');
     return '<div class="card"><div class="row" style="margin-bottom:8px">'
       +'<span style="font-size:16px;font-weight:600;flex:1">'+esc(ag.name)+'</span>'
       +'<span class="badge '+(isUe?'badge-purple':'badge-gray')+'">'+(isUe?'Klassenübergreifend':'Klasseneigen')+'</span>'
-      +'<button class="danger small" onclick="deleteAG('+ag.id+')">🗑</button></div>'
+      +'<button class="danger small" onclick="deleteAG(\''+ag.id+'\')">🗑</button></div>'
       +'<div style="background:#f5f4f0;border-radius:8px;padding:8px 12px">'
       +'<div style="font-size:11px;color:#999;margin-bottom:6px">Max. Teilnehmer im Zahlenfeld rechts ändern</div>'
       +kontInfo+'</div></div>';
@@ -684,17 +646,29 @@ async function addKlasse(){
   if(!state.passwoerter) state.passwoerter={};
   state.passwoerter[name]=String(Math.floor(100+Math.random()*900));
   document.getElementById('klassen-name').value='';
+  setSyncStatus('loading','Speichert...');
+  try{
+    await speichereKlassen();
+    setSyncStatus('ok','Gespeichert ✓');
+    showAlert('Klasse "'+name+'" angelegt. Passwort: '+state.passwoerter[name],'ok');
+  }catch(e){setSyncStatus('err','Fehler');showAlert('Fehler: '+e.message,'err');}
   renderAdminKlassen();
-  showAlert('Klasse "'+name+'" angelegt. Passwort: '+state.passwoerter[name],'ok');
-  await syncNachSheets();
 }
+
 async function deleteKlasse(name){
   if(!confirm('Klasse "'+name+'" und alle Schüler löschen?')) return;
   state.klassen=state.klassen.filter(function(k){return k!==name;});
   state.schueler=state.schueler.filter(function(s){return s.klasse!==name;});
   if(state.passwoerter) delete state.passwoerter[name];
-  renderAdminKlassen(); await syncNachSheets();
+  setSyncStatus('loading','Speichert...');
+  try{
+    await speichereKlassen();
+    await speichereSchueler();
+    setSyncStatus('ok','Gespeichert ✓');
+  }catch(e){setSyncStatus('err','Fehler');showAlert('Fehler: '+e.message,'err');}
+  renderAdminKlassen();
 }
+
 function renderAdminKlassen(){
   var el=document.getElementById('klassen-liste');
   if(!state.klassen.length){el.innerHTML='<div class="empty">Noch keine Klassen angelegt.</div>';return;}
@@ -719,7 +693,7 @@ function renderUebersicht(){
   var ueAGs=state.ags.filter(function(a){return a.typ==='uebergreifend';});
   auslEl.innerHTML=!ueAGs.length?'<div class="empty">Keine klassenübergreifenden AGs.</div>':
     ueAGs.map(function(ag){
-      return ag.kontingente.map(function(k){
+      return (ag.kontingente||[]).map(function(k){
         var belegt=belegtInKont(ag,k);
         var pct=Math.round(belegt/k.max*100);
         var cls=pct>=100?'full':pct>=80?'warn':'';
@@ -746,22 +720,22 @@ function renderUebersicht(){
   el.innerHTML='<table><thead><tr><th>Klasse</th><th>Name</th><th>1. Wahl</th><th>2. Wahl</th><th>3. Wahl</th><th>Zuteilung</th><th></th></tr></thead><tbody>'
     +rows.map(function(s){
       var zName=s.zuteilung?esc(getAGNameById(s.zuteilung)):'<span style="color:#b91c1c">Keine</span>';
-      var ist1=s.zuteilung&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
+      var ist1=s.zuteilung&&s.wuensche&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
       return '<tr><td><span class="badge badge-blue">'+esc(s.klasse)+'</span></td>'
         +'<td>'+esc(s.nachname)+', '+esc(s.vorname)+'</td>'
         +'<td>'+esc(getWahl(s,1))+'</td><td>'+esc(getWahl(s,2))+'</td><td>'+esc(getWahl(s,3))+'</td>'
         +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+'</td>'
-        +'<td><button class="danger small" onclick="delSchuelerAdmin('+s.id+')">🗑</button></td></tr>';
+        +'<td><button class="danger small" onclick="delSchuelerAdmin(\''+s.id+'\')">🗑</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
+
 async function delSchuelerAdmin(id){
   state.schueler=state.schueler.filter(function(s){return s.id!==id;});
-  renderUebersicht(); await syncNachSheets();
+  try{await speichereSchueler();}catch(e){showAlert('Fehler: '+e.message,'err');}
+  renderUebersicht();
 }
 
-// ─── LEHRER: EINTRAGEN ────────────────────────────────────────────────────────
-function renderKlassenGrid(){}// nicht mehr genutzt
-
+// ─── LEHRER ───────────────────────────────────────────────────────────────────
 function renderLehrerPage(){
   if(!aktiveKlasse) return;
   document.getElementById('lehrer-nav-title').textContent='Klasse '+aktiveKlasse;
@@ -784,7 +758,6 @@ function renderLehrerPage(){
           +freiLabel+'</div>';
       }).join('');
     }).join('');
-
   var selEl=document.getElementById('wunsch-selects');
   selEl.innerHTML=!verfAGs.length?'<div class="empty" style="grid-column:1/-1">Keine AGs.</div>':
     [1,2,3].map(function(p){
@@ -794,9 +767,8 @@ function renderLehrerPage(){
           var belegt=konts.reduce(function(s,k){return s+belegtInKont(ag,k);},0);
           var max=konts.reduce(function(s,k){return s+k.max;},0);
           var voll=belegt>=max;
-          // Volle AGs können noch gewählt werden (Losverfahren!) – aber mit Hinweis
           return '<option value="'+ag.id+'">'
-            +esc(ag.name)+(voll?' ⚠️ voll (wird gelost)':' ('+( max-belegt)+' frei)')+'</option>';
+            +esc(ag.name)+(voll?' ⚠️ voll (wird gelost)':' ('+(max-belegt)+' frei)')+'</option>';
         }).join('')+'</select>';
     }).join('');
   renderSchuelerTabelle();
@@ -806,50 +778,46 @@ async function addSchueler(){
   var vn=document.getElementById('sch-vorname').value.trim();
   var nn=document.getElementById('sch-nachname').value.trim();
   if(!vn||!nn){showAlert('Bitte Vor- und Nachname eingeben.','err');return;}
-  var wuensche=[]; var gewaehlte=new Set();
+  var wuensche=[];var gewaehlte=new Set();
   [1,2,3].forEach(function(p){
     var sel=document.getElementById('wunsch-'+p);
     if(!sel||!sel.value) return;
-    var agId=parseFloat(sel.value);
+    var agId=sel.value;
     if(gewaehlte.has(agId)) return;
     gewaehlte.add(agId);
     wuensche.push({prio:p,agId:agId});
   });
   if(!wuensche.length){showAlert('Bitte mindestens eine AG-Wahl angeben.','err');return;}
-
   var btn=document.getElementById('btn-add-schueler');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Wird gelost...';
-
-  var neuer={id:Date.now()+Math.random(), vorname:vn, nachname:nn, klasse:aktiveKlasse, wuensche:wuensche, zuteilung:null};
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Wird gelost...';
+  var neuer={id:'s_'+Date.now(),vorname:vn,nachname:nn,klasse:aktiveKlasse,wuensche:wuensche,zuteilung:null};
   state.schueler.push(neuer);
-
-  // Losverfahren durchführen
-  var protokoll=losverfahrenDurchfuehren(neuer);
-
+  losverfahren(neuer);
   document.getElementById('sch-vorname').value='';
   document.getElementById('sch-nachname').value='';
   [1,2,3].forEach(function(p){var s=document.getElementById('wunsch-'+p);if(s)s.value='';});
   document.getElementById('sch-vorname').focus();
-
-  renderLehrerPage();
-  await syncNachSheets();
-
-  btn.disabled=false; btn.innerHTML='+ Schüler eintragen & losen';
-
-  // Ergebnis anzeigen
-  var zugeteilt=neuer.zuteilung?getAGNameById(neuer.zuteilung):'keine AG';
-  if(neuer.zuteilung===wuensche[0]&&wuensche[0]&&neuer.zuteilung===wuensche[0].agId){
-    showAlert(vn+' '+nn+' → '+zugeteilt+' (1. Wahl) ✓','ok');
-  } else if(neuer.zuteilung){
-    showAlert(vn+' '+nn+' wurde durch Los zugeteilt: '+zugeteilt,'ok');
-  } else {
-    showAlert(vn+' '+nn+' konnte keiner AG zugeteilt werden.','err');
+  setSyncStatus('loading','Speichert...');
+  try{
+    await speichereSchueler();
+    setSyncStatus('ok','Gespeichert ✓');
+    var zugeteilt=neuer.zuteilung?getAGNameById(neuer.zuteilung):'keine AG';
+    var ist1=neuer.zuteilung&&wuensche[0]&&neuer.zuteilung===wuensche[0].agId;
+    if(ist1) showAlert(vn+' '+nn+' → '+zugeteilt+' (1. Wahl) ✓','ok');
+    else if(neuer.zuteilung) showAlert(vn+' '+nn+' durch Los zugeteilt: '+zugeteilt,'ok');
+    else showAlert(vn+' '+nn+' konnte keiner AG zugeteilt werden.','err');
+  }catch(e){
+    setSyncStatus('err','Fehler');
+    showAlert('Fehler beim Speichern: '+e.message,'err');
   }
+  btn.disabled=false;btn.innerHTML='+ Schüler eintragen & losen';
+  renderLehrerPage();
 }
 
 async function deleteSchueler(id){
   state.schueler=state.schueler.filter(function(s){return s.id!==id;});
-  renderLehrerPage(); await syncNachSheets();
+  try{await speichereSchueler();}catch(e){showAlert('Fehler: '+e.message,'err');}
+  renderLehrerPage();
 }
 
 function renderSchuelerTabelle(){
@@ -861,11 +829,11 @@ function renderSchuelerTabelle(){
   el.innerHTML='<table><thead><tr><th>Name</th><th>1. Wahl</th><th>Zuteilung</th><th></th></tr></thead><tbody>'
     +rows.map(function(s){
       var zName=s.zuteilung?esc(getAGNameById(s.zuteilung)):'<span style="color:#b91c1c">Keine</span>';
-      var ist1=s.zuteilung&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
+      var ist1=s.zuteilung&&s.wuensche&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
       return '<tr><td style="font-weight:500">'+esc(s.nachname)+', '+esc(s.vorname)+'</td>'
         +'<td>'+esc(getWahl(s,1))+'</td>'
         +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+'</td>'
-        +'<td><button class="danger small" onclick="deleteSchueler('+s.id+')">🗑</button></td></tr>';
+        +'<td><button class="danger small" onclick="deleteSchueler(\''+s.id+'\')">🗑</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
 
@@ -877,9 +845,15 @@ function buildCSV(rows){
         s.zuteilung?getAGNameById(s.zuteilung):'Keine Zuteilung'];
     })
   );
-  return '\uFEFF'+lines.map(function(r){return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+  return '\uFEFF'+lines.map(function(r){
+    return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');
+  }).join('\r\n');
 }
-function dlCSV(csv,fn){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=fn;a.click();}
+function dlCSV(csv,fn){
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=fn;a.click();
+}
 function exportKlasseCSV(){
   var rows=state.schueler.filter(function(s){return s.klasse===aktiveKlasse;});
   if(!rows.length){showAlert('Keine Schüler.','err');return;}
@@ -898,7 +872,7 @@ function exportAlleCSV(){
 
 // ─── START ────────────────────────────────────────────────────────────────────
 (async function(){
-  await syncVonSheets(false);
+  await ladeAlles(false);
   document.getElementById('loading-overlay').style.display='none';
   document.getElementById('page-start').classList.add('active');
 })();
