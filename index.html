@@ -194,6 +194,7 @@ tr:last-child td{border-bottom:none}
     <button class="tab active" onclick="adminTab('ags')">AGs verwalten</button>
     <button class="tab" onclick="adminTab('klassen')">Klassen</button>
     <button class="tab" onclick="adminTab('uebersicht')">Gesamtübersicht</button>
+    <button class="tab" onclick="adminTab('agtage')">AG-Tage</button>
   </div>
 
   <div id="admin-ags">
@@ -337,6 +338,94 @@ tr:last-child td{border-bottom:none}
       <div id="uebersicht-tabelle"><div class="empty">Noch keine Daten.</div></div>
     </div>
   </div>
+  <!-- TAB: AG-Tage -->
+  <div id="admin-agtage" style="display:none">
+    <div class="card">
+      <div class="section-title">Reguläre AG-Tage der Klassenstufen</div>
+      <div class="info-box">Diese Einstellungen gelten für das aktuelle Schuljahr und beeinflussen die automatische Lernzeit-Zuteilung.</div>
+      <div style="display:grid;gap:12px;margin-top:4px">
+        <div class="row">
+          <span style="min-width:180px;font-size:14px">Klassenstufen 5 &amp; 6</span>
+          <select id="agtag-5-6" onchange="speichereAGTage()" style="flex:1">
+            <option value="">– Tag wählen –</option>
+            <option value="Montag">Montag</option>
+            <option value="Dienstag">Dienstag</option>
+            <option value="Mittwoch">Mittwoch</option>
+            <option value="Donnerstag">Donnerstag</option>
+            <option value="Freitag">Freitag</option>
+          </select>
+        </div>
+        <div class="row">
+          <span style="min-width:180px;font-size:14px">Klassenstufe 7</span>
+          <select id="agtag-7" onchange="speichereAGTage()" style="flex:1">
+            <option value="">– Tag wählen –</option>
+            <option value="Montag">Montag</option>
+            <option value="Dienstag">Dienstag</option>
+            <option value="Mittwoch">Mittwoch</option>
+            <option value="Donnerstag">Donnerstag</option>
+            <option value="Freitag">Freitag</option>
+          </select>
+        </div>
+        <div class="row">
+          <span style="min-width:180px;font-size:14px">Klassenstufe 8</span>
+          <select id="agtag-8" onchange="speichereAGTage()" style="flex:1">
+            <option value="">– Tag wählen –</option>
+            <option value="Montag">Montag</option>
+            <option value="Dienstag">Dienstag</option>
+            <option value="Mittwoch">Mittwoch</option>
+            <option value="Donnerstag">Donnerstag</option>
+            <option value="Freitag">Freitag</option>
+          </select>
+        </div>
+        <div class="row">
+          <span style="min-width:180px;font-size:14px">Klassenstufen 9 &amp; 10</span>
+          <select id="agtag-9-10" onchange="speichereAGTage()" style="flex:1">
+            <option value="">– Tag wählen –</option>
+            <option value="Montag">Montag</option>
+            <option value="Dienstag">Dienstag</option>
+            <option value="Mittwoch">Mittwoch</option>
+            <option value="Donnerstag">Donnerstag</option>
+            <option value="Freitag">Freitag</option>
+          </select>
+        </div>
+        <div class="row">
+          <span style="min-width:180px;font-size:14px">Klassenstufe 11</span>
+          <select id="agtag-11" onchange="speichereAGTage()" style="flex:1">
+            <option value="">– Tag wählen –</option>
+            <option value="Montag">Montag</option>
+            <option value="Dienstag">Dienstag</option>
+            <option value="Mittwoch">Mittwoch</option>
+            <option value="Donnerstag">Donnerstag</option>
+            <option value="Freitag">Freitag</option>
+          </select>
+        </div>
+        <div class="row">
+          <span style="min-width:180px;font-size:14px">Klassenstufe 12</span>
+          <select id="agtag-12" onchange="speichereAGTage()" style="flex:1">
+            <option value="">– Tag wählen –</option>
+            <option value="Montag">Montag</option>
+            <option value="Dienstag">Dienstag</option>
+            <option value="Mittwoch">Mittwoch</option>
+            <option value="Donnerstag">Donnerstag</option>
+            <option value="Freitag">Freitag</option>
+          </select>
+        </div>
+        <div class="row">
+          <span style="min-width:180px;font-size:14px">Klassenstufe 13</span>
+          <select id="agtag-13" onchange="speichereAGTage()" style="flex:1">
+            <option value="">– Tag wählen –</option>
+            <option value="Montag">Montag</option>
+            <option value="Dienstag">Dienstag</option>
+            <option value="Mittwoch">Mittwoch</option>
+            <option value="Donnerstag">Donnerstag</option>
+            <option value="Freitag">Freitag</option>
+          </select>
+        </div>
+      </div>
+      <div id="agtage-status" style="margin-top:12px;font-size:13px;color:#166534;display:none">✓ Gespeichert</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- LEHRER -->
@@ -445,7 +534,7 @@ var neueAgEigenKlassen = [];
 var ADMIN_PW = '742';
 
 // ─── FIREBASE LESEN/SCHREIBEN ─────────────────────────────────────────────────
-// Regulärer AG-Tag pro Jahrgangsstufe
+// Regulärer AG-Tag pro Jahrgangsstufe – dynamisch aus Firebase
 var AG_TAGE = {
   5: 'Dienstag', 6: 'Dienstag',
   7: 'Mittwoch',
@@ -455,7 +544,40 @@ var AG_TAGE = {
 
 function getRegularerAGTag(klasse){
   var jg = jahrgang(klasse);
+  // Erst aus state.agTage lesen, dann Fallback auf Standardwerte
+  if(state.agTage){
+    if(jg===5||jg===6) return state.agTage['5-6']||AG_TAGE[jg]||null;
+    if(jg===9||jg===10) return state.agTage['9-10']||AG_TAGE[jg]||null;
+    if(state.agTage[String(jg)]) return state.agTage[String(jg)];
+  }
   return AG_TAGE[jg] || null;
+}
+
+function ladeAGTageInSelects(){
+  var tage = state.agTage || {};
+  var felder = {'5-6':'agtag-5-6','7':'agtag-7','8':'agtag-8','9-10':'agtag-9-10','11':'agtag-11','12':'agtag-12','13':'agtag-13'};
+  Object.keys(felder).forEach(function(key){
+    var sel = document.getElementById(felder[key]);
+    if(sel && tage[key]) sel.value = tage[key];
+  });
+}
+
+async function speichereAGTage(){
+  var felder = {'5-6':'agtag-5-6','7':'agtag-7','8':'agtag-8','9-10':'agtag-9-10','11':'agtag-11','12':'agtag-12','13':'agtag-13'};
+  var tage = {};
+  Object.keys(felder).forEach(function(key){
+    var sel = document.getElementById(felder[key]);
+    if(sel && sel.value) tage[key] = sel.value;
+  });
+  state.agTage = tage;
+  try{
+    await db.ref('/agTage').set(tage);
+    var status = document.getElementById('agtage-status');
+    status.style.display='block';
+    setTimeout(function(){status.style.display='none';},2000);
+  }catch(e){
+    showAlert('Fehler beim Speichern: '+e.message,'err');
+  }
 }
 
 function getLernzeitAGFuerKlasse(klasse){
@@ -505,7 +627,8 @@ async function ladeAlles(feedback) {
       klassen: data.klassen ? Object.values(data.klassen) : [],
       schueler: data.schueler ? Object.values(data.schueler) : [],
       passwoerter: data.passwoerter || {},
-      lernzeitAGs: data.lernzeitAGs || {}
+      lernzeitAGs: data.lernzeitAGs || {},
+      agTage: data.agTage || {}
     };
     // Passwörter immer als String
     Object.keys(state.passwoerter).forEach(function(k){
@@ -729,11 +852,12 @@ function goPage(name){
   if(name==='start') ladeAlles(false);
 }
 function adminTab(name){
-  ['ags','klassen','uebersicht'].forEach(function(t,i){
+  ['ags','klassen','uebersicht','agtage'].forEach(function(t,i){
     document.getElementById('admin-'+t).style.display=t===name?'block':'none';
     document.querySelectorAll('.tabs .tab')[i].classList.toggle('active',t===name);
   });
   if(name==='uebersicht') renderUebersicht();
+  if(name==='agtage') ladeAGTageInSelects();
 }
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
@@ -1106,15 +1230,17 @@ function renderUebersicht(){
     return a.nachname.localeCompare(b.nachname);
   });
   if(!rows.length){el.innerHTML='<div class="empty">Keine Einträge.</div>';return;}
-  el.innerHTML='<table><thead><tr><th>Klasse</th><th>Name</th><th>1. Wahl</th><th>2. Wahl</th><th>3. Wahl</th><th>Zuteilung</th><th></th></tr></thead><tbody>'
+  el.innerHTML='<table><thead><tr><th>Klasse</th><th>Name</th><th>1. Wahl</th><th>2. Wahl</th><th>3. Wahl</th><th>Reguläre AG</th><th>Lernzeit-AG</th><th></th></tr></thead><tbody>'
     +rows.map(function(s){
       var zName=s.zuteilung?esc(getAGNameById(s.zuteilung)):'<span style="color:#b91c1c">Keine</span>';
       var ist1=s.zuteilung&&s.wuensche&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
+      var lzName=s.lernzeitZuteilung?'<span class="badge badge-warn">'+esc(getAGNameById(s.lernzeitZuteilung))+'</span>':'<span style="color:#999;font-size:13px">–</span>';
       return '<tr><td><span class="badge badge-blue">'+esc(s.klasse)+'</span></td>'
         +'<td>'+esc(s.nachname)+', '+esc(s.vorname)+'</td>'
         +'<td>'+esc(getWahl(s,1))+'</td><td>'+esc(getWahl(s,2))+'</td><td>'+esc(getWahl(s,3))+'</td>'
         +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+'</td>'
-        +'<td><button class="danger small" onclick="delSchuelerAdmin(\''+s.id+'\')">🗑</button></td></tr>';
+        +'<td>'+lzName+'</td>'
+        +'<td><button class="danger small" onclick="delSchuelerAdmin(\''+s.id+'\')">🗑️</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
 
@@ -1214,15 +1340,17 @@ async function addSchueler(){
   losverfahren(neuer);
 
   // Lernzeit-AG zusätzlich zuweisen wenn nötig
+  neuer.lernzeitZuteilung = null;
   if(neuer.zuteilung){
-    var zugeteiltAG = getAGById(neuer.zuteilung);
-    var regularerTag = getRegularerAGTag(neuer.klasse);
-    var agTag = zugeteiltAG ? zugeteiltAG.wochentag : null;
-    // Wenn AG-Tag vom regulären Tag abweicht → zusätzlich Lernzeit-AG
-    if(regularerTag && agTag && agTag !== regularerTag){
-      var lzAG = getLernzeitAGFuerKlasse(neuer.klasse);
-      if(lzAG && lzAG.id !== neuer.zuteilung){
-        neuer.lernzeitZuteilung = lzAG.id;
+    var zugeteiltAG2 = getAGById(neuer.zuteilung);
+    var regularerTag2 = getRegularerAGTag(neuer.klasse);
+    var agTag2 = zugeteiltAG2 ? zugeteiltAG2.wochentag : null;
+    // Wenn AG-Tag vom regulären Tag abweicht ODER kein Tag gesetzt → Lernzeit prüfen
+    var tagWeicht = agTag2 && regularerTag2 && agTag2 !== regularerTag2;
+    if(tagWeicht){
+      var lzAG2 = getLernzeitAGFuerKlasse(neuer.klasse);
+      if(lzAG2 && lzAG2.id !== neuer.zuteilung){
+        neuer.lernzeitZuteilung = lzAG2.id;
       }
     }
   }
@@ -1261,14 +1389,15 @@ function renderSchuelerTabelle(){
     .sort(function(a,b){return a.nachname.localeCompare(b.nachname);});
   document.getElementById('count-schueler').textContent='('+rows.length+')';
   if(!rows.length){el.innerHTML='<div class="empty">Noch niemand eingetragen.</div>';return;}
-  el.innerHTML='<table><thead><tr><th>Name</th><th>1. Wahl</th><th>Zuteilung</th><th></th></tr></thead><tbody>'
+  el.innerHTML='<table><thead><tr><th>Name</th><th>1. Wahl</th><th>Reguläre AG</th><th>Lernzeit-AG</th><th></th></tr></thead><tbody>'
     +rows.map(function(s){
       var zName=s.zuteilung?esc(getAGNameById(s.zuteilung)):'<span style="color:#b91c1c">Keine</span>';
       var ist1=s.zuteilung&&s.wuensche&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
       return '<tr><td style="font-weight:500">'+esc(s.nachname)+', '+esc(s.vorname)+'</td>'
         +'<td>'+esc(getWahl(s,1))+'</td>'
-        +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+(s.lernzeitZuteilung?'<br><span style="font-size:11px;color:#854d0e">+ Lernzeit: '+esc(getAGNameById(s.lernzeitZuteilung))+'</span>':'')+'</td>'
-        +'<td><button class="danger small" onclick="deleteSchueler(\''+s.id+'\')">🗑</button></td></tr>';
+        +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+'</td>'
+        +'<td>'+(s.lernzeitZuteilung?'<span class="badge badge-warn">'+esc(getAGNameById(s.lernzeitZuteilung))+'</span>':'<span style="color:#999;font-size:13px">–</span>')+'</td>'
+        +'<td><button class="danger small" onclick="deleteSchueler(\''+s.id+'\')">🗑️</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
 
