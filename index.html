@@ -337,7 +337,7 @@ tr:last-child td{border-bottom:none}
       <div style="font-size:12px;color:#666">3. Wahl</div>
     </div>
     <div class="grid3" id="wunsch-selects" style="margin-bottom:14px"></div>
-    <button class="primary" id="btn-add-schueler" onclick="addSchueler()">+ Schüler eintragen & losen</button>
+    <button class="primary" id="btn-add-schueler" onclick="addSchueler()">Schüler eintragen bzw. losen</button>
   </div>
   <div class="card">
     <div class="section-title">Eingetragene Schüler <span id="count-schueler" style="color:#666;font-weight:400">(0)</span></div>
@@ -1127,7 +1127,7 @@ async function addSchueler(){
     setSyncStatus('err','Fehler');
     showAlert('Fehler beim Speichern: '+e.message,'err');
   }
-  btn.disabled=false;btn.innerHTML='+ Schüler eintragen & losen';
+  btn.disabled=false;btn.innerHTML='Schüler eintragen bzw. losen';
   renderLehrerPage();
 }
 
