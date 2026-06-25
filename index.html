@@ -1389,7 +1389,7 @@ function renderSchuelerTabelle(){
     .sort(function(a,b){return a.nachname.localeCompare(b.nachname);});
   document.getElementById('count-schueler').textContent='('+rows.length+')';
   if(!rows.length){el.innerHTML='<div class="empty">Noch niemand eingetragen.</div>';return;}
-  el.innerHTML='<table><thead><tr><th>Name</th><th>1. Wahl</th><th>Reguläre AG</th><th>Lernzeit-AG</th><th></th></tr></thead><tbody>'
+  el.innerHTML='<table><thead><tr><th>Name</th><th>1. Wahl</th><th>Zuteilung</th><th>Zusätzliche Zuteilung</th><th></th></tr></thead><tbody>'
     +rows.map(function(s){
       var zName=s.zuteilung?esc(getAGNameById(s.zuteilung)):'<span style="color:#b91c1c">Keine</span>';
       var ist1=s.zuteilung&&s.wuensche&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
