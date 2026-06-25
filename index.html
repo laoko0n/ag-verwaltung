@@ -1012,7 +1012,7 @@ function renderAGListe(){
             +'<input type="number" min="1" value="'+ek.max+'" style="width:65px;padding:4px 6px;font-size:13px" onchange="aendereEigenMax(\''+ag.id+'\','+eki+',this.value)" /></div>';
         }).join('');
     return '<div class="card"><div class="row" style="margin-bottom:8px">'
-      +'<span style="font-size:16px;font-weight:600;flex:1">'+esc(ag.name)+'</span>'
+      +'<span style="font-size:16px;font-weight:600;flex:1">'+esc(ag.name)+'</span>'+(ag.wochentag?'<span class="badge badge-blue" style="font-size:12px">📅 '+esc(ag.wochentag)+'</span>':'')
       +'<button class="small outline" data-agid="'+ag.id+'" onclick="oeffneAGBearbeitungBtn(this)" style="margin-right:4px">✏️ Bearbeiten</button>'
       +'<button class="danger small" onclick="deleteAG(\''+ag.id+'\')">🗑</button></div>'
       +'<div style="background:#f5f4f0;border-radius:8px;padding:8px 12px">'
