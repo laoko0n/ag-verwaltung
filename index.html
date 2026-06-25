@@ -345,6 +345,35 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- AG BEARBEITEN-MODAL -->
+<div id="ag-edit-modal" class="modal-overlay" style="display:none" onclick="schliesseEditModal(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="edit-modal-titel">AG bearbeiten</div>
+      <button class="modal-close" onclick="document.getElementById('ag-edit-modal').style.display='none'">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="label">Beschreibung</div>
+      <textarea id="edit-ag-beschreibung" placeholder="Beschreiben Sie die AG..."
+        style="width:100%;padding:8px 10px;border:1px solid #d0cfc9;border-radius:8px;font-size:14px;font-family:inherit;min-height:80px;resize:vertical;margin-bottom:8px"></textarea>
+      <div class="label">Lehrkraft</div>
+      <input id="edit-ag-lehrkraft" type="text" placeholder="z.B. Hr. Müller" style="margin-bottom:8px" />
+      <div class="label">Raum / Treffpunkt</div>
+      <input id="edit-ag-raum" type="text" placeholder="z.B. Sporthalle, Raum 204" style="margin-bottom:8px" />
+      <div class="label">Wochentag & Uhrzeit</div>
+      <input id="edit-ag-zeit" type="text" placeholder="z.B. Dienstag 14:00–15:30 Uhr" style="margin-bottom:8px" />
+      <div class="label">Bild hochladen</div>
+      <input type="file" id="edit-ag-bild-upload" accept="image/*" onchange="vorschauEditBild(this)" style="margin-bottom:8px" />
+      <img id="edit-ag-bild-vorschau" src="" alt="" style="display:none;width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-bottom:12px" />
+      <button class="danger small" id="edit-ag-bild-loeschen" onclick="loescheBildEdit()" style="display:none;margin-bottom:12px">🗑 Bild entfernen</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+        <button onclick="document.getElementById('ag-edit-modal').style.display='none'" class="small">Abbrechen</button>
+        <button class="primary" onclick="speichereAGBearbeitung()">💾 Speichern</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- AG BESCHREIBUNGS-MODAL -->
 <div id="ag-modal" class="modal-overlay" style="display:none" onclick="schliesseModal(event)">
   <div class="modal-box">
@@ -399,6 +428,93 @@ async function ladeAlles(feedback) {
   } catch(e) {
     setSyncStatus('err', 'Verbindungsfehler: '+e.message);
     if(feedback) showAlert('Fehler: '+e.message,'err');
+  }
+}
+
+var aktiveEditAgId = null;
+
+function oeffneAGBearbeitungBtn(btn){
+  var agId = btn.getAttribute('data-agid');
+  oeffneAGBearbeitung(agId);
+}
+
+function oeffneAGBearbeitung(agId){
+  var ag = getAGById(agId);
+  if(!ag) return;
+  aktiveEditAgId = agId;
+  document.getElementById('edit-modal-titel').textContent = ag.name + ' – bearbeiten';
+  document.getElementById('edit-ag-beschreibung').value = ag.beschreibung||'';
+  document.getElementById('edit-ag-lehrkraft').value = ag.lehrkraft||'';
+  document.getElementById('edit-ag-raum').value = ag.raum||'';
+  document.getElementById('edit-ag-zeit').value = ag.zeit||'';
+  // Bild anzeigen falls vorhanden
+  var vorschau = document.getElementById('edit-ag-bild-vorschau');
+  var loeschBtn = document.getElementById('edit-ag-bild-loeschen');
+  if(ag.bild){
+    vorschau.src = ag.bild;
+    vorschau.style.display = 'block';
+    loeschBtn.style.display = 'inline-block';
+  } else {
+    vorschau.src = '';
+    vorschau.style.display = 'none';
+    loeschBtn.style.display = 'none';
+  }
+  document.getElementById('edit-ag-bild-upload').value = '';
+  document.getElementById('ag-edit-modal').style.display = 'flex';
+}
+
+function vorschauEditBild(input){
+  var img = document.getElementById('edit-ag-bild-vorschau');
+  var loeschBtn = document.getElementById('edit-ag-bild-loeschen');
+  if(input.files && input.files[0]){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      img.src = e.target.result;
+      img.style.display = 'block';
+      loeschBtn.style.display = 'inline-block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function loescheBildEdit(){
+  document.getElementById('edit-ag-bild-vorschau').src='';
+  document.getElementById('edit-ag-bild-vorschau').style.display='none';
+  document.getElementById('edit-ag-bild-loeschen').style.display='none';
+  document.getElementById('edit-ag-bild-upload').value='';
+}
+
+async function speichereAGBearbeitung(){
+  var ag = getAGById(aktiveEditAgId);
+  if(!ag) return;
+  ag.beschreibung = document.getElementById('edit-ag-beschreibung').value.trim();
+  ag.lehrkraft = document.getElementById('edit-ag-lehrkraft').value.trim();
+  ag.raum = document.getElementById('edit-ag-raum').value.trim();
+  ag.zeit = document.getElementById('edit-ag-zeit').value.trim();
+  // Bild: neues hochladen oder bestehendes behalten oder gelöscht
+  var bildInput = document.getElementById('edit-ag-bild-upload');
+  var vorschau = document.getElementById('edit-ag-bild-vorschau');
+  if(bildInput.files && bildInput.files[0]){
+    ag.bild = await lesBildAlsBase64(bildInput.files[0]);
+  } else if(!vorschau.src || vorschau.style.display==='none'){
+    ag.bild = '';
+  }
+  document.getElementById('ag-edit-modal').style.display='none';
+  setSyncStatus('loading','Speichert...');
+  try{
+    await speichereAGs();
+    setSyncStatus('ok','Gespeichert ✓');
+    showAlert('AG "'+ag.name+'" aktualisiert.','ok');
+  }catch(e){
+    setSyncStatus('err','Fehler');
+    showAlert('Fehler: '+e.message,'err');
+  }
+  renderAGListe();
+}
+
+function schliesseEditModal(event){
+  if(event.target===document.getElementById('ag-edit-modal')){
+    document.getElementById('ag-edit-modal').style.display='none';
   }
 }
 
@@ -796,7 +912,7 @@ function renderAGListe(){
         }).join('');
     return '<div class="card"><div class="row" style="margin-bottom:8px">'
       +'<span style="font-size:16px;font-weight:600;flex:1">'+esc(ag.name)+'</span>'
-      +'<span class="badge '+(isUe?'badge-purple':'badge-gray')+'">'+(isUe?'Klassenübergreifend':'Klasseneigen')+'</span>'
+      +'<button class="small outline" data-agid="'+ag.id+'" onclick="oeffneAGBearbeitungBtn(this)" style="margin-right:4px">✏️ Bearbeiten</button>'
       +'<button class="danger small" onclick="deleteAG(\''+ag.id+'\')">🗑</button></div>'
       +'<div style="background:#f5f4f0;border-radius:8px;padding:8px 12px">'
       +'<div style="font-size:11px;color:#999;margin-bottom:6px">Max. Teilnehmer im Zahlenfeld rechts ändern</div>'
