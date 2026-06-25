@@ -248,8 +248,17 @@ tr:last-child td{border-bottom:none}
           <input id="ag-lehrkraft" type="text" placeholder="z.B. Hr. Müller" />
           <div class="label">Raum / Treffpunkt</div>
           <input id="ag-raum" type="text" placeholder="z.B. Sporthalle, Raum 204" />
-          <div class="label">Wochentag & Uhrzeit</div>
-          <input id="ag-zeit" type="text" placeholder="z.B. Dienstag 14:00–15:30 Uhr" />
+          <div class="label">Wochentag der AG</div>
+          <select id="ag-wochentag" style="margin-bottom:8px">
+            <option value="">– Wochentag wählen –</option>
+            <option value="Montag">Montag</option>
+            <option value="Dienstag">Dienstag</option>
+            <option value="Mittwoch">Mittwoch</option>
+            <option value="Donnerstag">Donnerstag</option>
+            <option value="Freitag">Freitag</option>
+          </select>
+          <div class="label">Uhrzeit</div>
+          <input id="ag-zeit" type="text" placeholder="z.B. 14:00–15:30 Uhr" />
           <div class="label">Bild hochladen (optional)</div>
           <input type="file" id="ag-bild-upload" accept="image/*" style="margin-top:4px" onchange="vorschauBild(this)" />
           <img id="ag-bild-vorschau" src="" alt="" style="display:none;width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-top:8px" />
@@ -276,6 +285,28 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <div id="admin-klassen" style="display:none">
+    <div class="card">
+      <div class="section-title">Lernzeit-AGs festlegen</div>
+      <div class="info-box">Legen Sie pro Wochentag fest, welche AG die Lernzeit-AG ist. Schüler die eine AG außerhalb ihres regulären AG-Tags bekommen, werden automatisch zusätzlich in die Lernzeit-AG ihres Tages eingetragen.</div>
+      <div style="margin-bottom:10px">
+        <div class="label">Klassenstufen 5+6 → Dienstag</div>
+        <select id="lernzeit-dienstag" onchange="speichereLernzeitAGs()">
+          <option value="">– Lernzeit-AG wählen –</option>
+        </select>
+        <div class="label">Klassenstufe 7 → Mittwoch</div>
+        <select id="lernzeit-mittwoch" onchange="speichereLernzeitAGs()">
+          <option value="">– Lernzeit-AG wählen –</option>
+        </select>
+        <div class="label">Klassenstufe 8 → Montag</div>
+        <select id="lernzeit-montag" onchange="speichereLernzeitAGs()">
+          <option value="">– Lernzeit-AG wählen –</option>
+        </select>
+        <div class="label">Klassenstufen 9+10 → Donnerstag</div>
+        <select id="lernzeit-donnerstag" onchange="speichereLernzeitAGs()">
+          <option value="">– Lernzeit-AG wählen –</option>
+        </select>
+      </div>
+    </div>
     <div class="card">
       <div class="section-title">Klassen anlegen</div>
       <div class="info-box">Pro Klasse wird automatisch ein 3-stelliges Passwort generiert.</div>
@@ -360,8 +391,17 @@ tr:last-child td{border-bottom:none}
       <input id="edit-ag-lehrkraft" type="text" placeholder="z.B. Hr. Müller" style="margin-bottom:8px" />
       <div class="label">Raum / Treffpunkt</div>
       <input id="edit-ag-raum" type="text" placeholder="z.B. Sporthalle, Raum 204" style="margin-bottom:8px" />
-      <div class="label">Wochentag & Uhrzeit</div>
-      <input id="edit-ag-zeit" type="text" placeholder="z.B. Dienstag 14:00–15:30 Uhr" style="margin-bottom:8px" />
+      <div class="label">Wochentag der AG</div>
+      <select id="edit-ag-wochentag" style="margin-bottom:8px">
+        <option value="">– Wochentag wählen –</option>
+        <option value="Montag">Montag</option>
+        <option value="Dienstag">Dienstag</option>
+        <option value="Mittwoch">Mittwoch</option>
+        <option value="Donnerstag">Donnerstag</option>
+        <option value="Freitag">Freitag</option>
+      </select>
+      <div class="label">Uhrzeit</div>
+      <input id="edit-ag-zeit" type="text" placeholder="z.B. 14:00–15:30 Uhr" style="margin-bottom:8px" />
       <div class="label">Bild hochladen</div>
       <input type="file" id="edit-ag-bild-upload" accept="image/*" onchange="vorschauEditBild(this)" style="margin-bottom:8px" />
       <img id="edit-ag-bild-vorschau" src="" alt="" style="display:none;width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-bottom:12px" />
@@ -405,6 +445,56 @@ var neueAgEigenKlassen = [];
 var ADMIN_PW = '742';
 
 // ─── FIREBASE LESEN/SCHREIBEN ─────────────────────────────────────────────────
+// Regulärer AG-Tag pro Jahrgangsstufe
+var AG_TAGE = {
+  5: 'Dienstag', 6: 'Dienstag',
+  7: 'Mittwoch',
+  8: 'Montag',
+  9: 'Donnerstag', 10: 'Donnerstag'
+};
+
+function getRegularerAGTag(klasse){
+  var jg = jahrgang(klasse);
+  return AG_TAGE[jg] || null;
+}
+
+function getLernzeitAGFuerKlasse(klasse){
+  var tag = getRegularerAGTag(klasse);
+  if(!tag || !state.lernzeitAGs) return null;
+  var agId = state.lernzeitAGs[tag];
+  if(!agId) return null;
+  return getAGById(agId);
+}
+
+async function speichereLernzeitAGs(){
+  var tage = ['Montag','Dienstag','Mittwoch','Donnerstag'];
+  var lernzeit = {};
+  tage.forEach(function(tag){
+    var sel = document.getElementById('lernzeit-'+tag.toLowerCase());
+    if(sel && sel.value) lernzeit[tag] = sel.value;
+  });
+  state.lernzeitAGs = lernzeit;
+  try{
+    await db.ref('/lernzeitAGs').set(lernzeit);
+    showAlert('Lernzeit-AGs gespeichert ✓','ok');
+  }catch(e){
+    showAlert('Fehler: '+e.message,'err');
+  }
+}
+
+function befuelleLernzeitSelects(){
+  var tage = ['Montag','Dienstag','Mittwoch','Donnerstag'];
+  tage.forEach(function(tag){
+    var sel = document.getElementById('lernzeit-'+tag.toLowerCase());
+    if(!sel) return;
+    var currentVal = state.lernzeitAGs && state.lernzeitAGs[tag] ? state.lernzeitAGs[tag] : '';
+    sel.innerHTML = '<option value="">– Lernzeit-AG wählen –</option>'
+      + state.ags.map(function(ag){
+          return '<option value="'+ag.id+'"'+(ag.id===currentVal?' selected':'')+'>'+esc(ag.name)+'</option>';
+        }).join('');
+  });
+}
+
 async function ladeAlles(feedback) {
   setSyncStatus('loading', 'Lädt...');
   try {
@@ -414,7 +504,8 @@ async function ladeAlles(feedback) {
       ags: data.ags ? Object.values(data.ags) : [],
       klassen: data.klassen ? Object.values(data.klassen) : [],
       schueler: data.schueler ? Object.values(data.schueler) : [],
-      passwoerter: data.passwoerter || {}
+      passwoerter: data.passwoerter || {},
+      lernzeitAGs: data.lernzeitAGs || {}
     };
     // Passwörter immer als String
     Object.keys(state.passwoerter).forEach(function(k){
@@ -446,6 +537,7 @@ function oeffneAGBearbeitung(agId){
   document.getElementById('edit-ag-beschreibung').value = ag.beschreibung||'';
   document.getElementById('edit-ag-lehrkraft').value = ag.lehrkraft||'';
   document.getElementById('edit-ag-raum').value = ag.raum||'';
+  document.getElementById('edit-ag-wochentag').value = ag.wochentag||'';
   document.getElementById('edit-ag-zeit').value = ag.zeit||'';
   // Bild anzeigen falls vorhanden
   var vorschau = document.getElementById('edit-ag-bild-vorschau');
@@ -490,6 +582,7 @@ async function speichereAGBearbeitung(){
   ag.beschreibung = document.getElementById('edit-ag-beschreibung').value.trim();
   ag.lehrkraft = document.getElementById('edit-ag-lehrkraft').value.trim();
   ag.raum = document.getElementById('edit-ag-raum').value.trim();
+  ag.wochentag = document.getElementById('edit-ag-wochentag').value;
   ag.zeit = document.getElementById('edit-ag-zeit').value.trim();
   // Bild: neues hochladen oder bestehendes behalten oder gelöscht
   var bildInput = document.getElementById('edit-ag-bild-upload');
@@ -591,7 +684,13 @@ function losverfahren(neuerSchueler){
     var s=aufgabe.schueler;
     var prio=aufgabe.prio;
     var wunsch=(s.wuensche||[]).find(function(w){return w.prio===prio;});
-    if(!wunsch){s.zuteilung=null;continue;}
+    if(!wunsch){
+      // Kein Wunsch mehr → Lernzeit-AG zuweisen
+      var lzAG=getLernzeitAGFuerKlasse(s.klasse);
+      s.zuteilung = lzAG ? lzAG.id : null;
+      s.lernzeitZuteilung = null;
+      continue;
+    }
     var ag=getAGById(wunsch.agId);
     if(!ag){warteschlange.push({schueler:s,prio:prio+1});continue;}
     var konts=getKontFuerKlasse(ag,s.klasse);
@@ -754,6 +853,7 @@ async function addAG(){
     beschreibung:document.getElementById('ag-beschreibung').value.trim(),
     lehrkraft:document.getElementById('ag-lehrkraft').value.trim(),
     raum:document.getElementById('ag-raum').value.trim(),
+    wochentag:document.getElementById('ag-wochentag').value,
     zeit:document.getElementById('ag-zeit').value.trim(),
     bild:bildData
   });
@@ -762,6 +862,7 @@ async function addAG(){
   document.getElementById('ag-beschreibung').value='';
   document.getElementById('ag-lehrkraft').value='';
   document.getElementById('ag-raum').value='';
+  document.getElementById('ag-wochentag').value='';
   document.getElementById('ag-zeit').value='';
   document.getElementById('ag-bild-upload').value='';
   document.getElementById('ag-bild-vorschau').style.display='none';
@@ -957,6 +1058,7 @@ async function deleteKlasse(name){
 }
 
 function renderAdminKlassen(){
+  befuelleLernzeitSelects();
   var el=document.getElementById('klassen-liste');
   if(!state.klassen.length){el.innerHTML='<div class="empty">Noch keine Klassen angelegt.</div>';return;}
   el.innerHTML='<div class="card">'+state.klassen.map(function(kn){
@@ -1110,6 +1212,21 @@ async function addSchueler(){
   var neuer={id:'s_'+Date.now(),vorname:vn,nachname:nn,klasse:aktiveKlasse,wuensche:wuensche,zuteilung:null};
   state.schueler.push(neuer);
   losverfahren(neuer);
+
+  // Lernzeit-AG zusätzlich zuweisen wenn nötig
+  if(neuer.zuteilung){
+    var zugeteiltAG = getAGById(neuer.zuteilung);
+    var regularerTag = getRegularerAGTag(neuer.klasse);
+    var agTag = zugeteiltAG ? zugeteiltAG.wochentag : null;
+    // Wenn AG-Tag vom regulären Tag abweicht → zusätzlich Lernzeit-AG
+    if(regularerTag && agTag && agTag !== regularerTag){
+      var lzAG = getLernzeitAGFuerKlasse(neuer.klasse);
+      if(lzAG && lzAG.id !== neuer.zuteilung){
+        neuer.lernzeitZuteilung = lzAG.id;
+      }
+    }
+  }
+
   document.getElementById('sch-vorname').value='';
   document.getElementById('sch-nachname').value='';
   [1,2,3].forEach(function(p){var s=document.getElementById('wunsch-'+p);if(s)s.value='';});
@@ -1120,9 +1237,10 @@ async function addSchueler(){
     setSyncStatus('ok','Gespeichert ✓');
     var zugeteilt=neuer.zuteilung?getAGNameById(neuer.zuteilung):'keine AG';
     var ist1=neuer.zuteilung&&wuensche[0]&&neuer.zuteilung===wuensche[0].agId;
-    if(ist1) showAlert(vn+' '+nn+' → '+zugeteilt+' (1. Wahl) ✓','ok');
-    else if(neuer.zuteilung) showAlert(vn+' '+nn+' durch Los zugeteilt: '+zugeteilt,'ok');
-    else showAlert(vn+' '+nn+' konnte keiner AG zugeteilt werden.','err');
+    var lzName = neuer.lernzeitZuteilung ? ' + Lernzeit: '+getAGNameById(neuer.lernzeitZuteilung) : '';
+    if(ist1) showAlert(vn+' '+nn+' → '+zugeteilt+' (1. Wahl) ✓'+lzName,'ok');
+    else if(neuer.zuteilung) showAlert(vn+' '+nn+' durch Los zugeteilt: '+zugeteilt+lzName,'ok');
+    else showAlert(vn+' '+nn+' → Lernzeit-AG zugewiesen','ok');
   }catch(e){
     setSyncStatus('err','Fehler');
     showAlert('Fehler beim Speichern: '+e.message,'err');
@@ -1149,17 +1267,18 @@ function renderSchuelerTabelle(){
       var ist1=s.zuteilung&&s.wuensche&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
       return '<tr><td style="font-weight:500">'+esc(s.nachname)+', '+esc(s.vorname)+'</td>'
         +'<td>'+esc(getWahl(s,1))+'</td>'
-        +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+'</td>'
+        +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+(s.lernzeitZuteilung?'<br><span style="font-size:11px;color:#854d0e">+ Lernzeit: '+esc(getAGNameById(s.lernzeitZuteilung))+'</span>':'')+'</td>'
         +'<td><button class="danger small" onclick="deleteSchueler(\''+s.id+'\')">🗑</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
 
 // ─── CSV EXPORT ───────────────────────────────────────────────────────────────
 function buildCSV(rows){
-  var lines=[['Klasse','Nachname','Vorname','1. Wahl','2. Wahl','3. Wahl','Zuteilung']].concat(
+  var lines=[['Klasse','Nachname','Vorname','1. Wahl','2. Wahl','3. Wahl','Zuteilung','Lernzeit-AG']].concat(
     rows.map(function(s){
       return [s.klasse,s.nachname,s.vorname,getWahl(s,1),getWahl(s,2),getWahl(s,3),
-        s.zuteilung?getAGNameById(s.zuteilung):'Keine Zuteilung'];
+        s.zuteilung?getAGNameById(s.zuteilung):'Keine Zuteilung',
+        s.lernzeitZuteilung?getAGNameById(s.lernzeitZuteilung):''];
     })
   );
   return '\uFEFF'+lines.map(function(r){
