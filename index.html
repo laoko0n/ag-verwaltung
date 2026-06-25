@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AG-Verwaltung</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
@@ -84,6 +85,21 @@ tr:last-child td{border-bottom:none}
 .loading-overlay .spinner{width:32px;height:32px;border-width:3px}
 .los-badge{background:#fef9c3;color:#854d0e;border:1px solid #fde047;border-radius:6px;font-size:11px;padding:1px 7px;margin-left:4px}
 .pw-input{text-align:center;font-size:28px;letter-spacing:10px;max-width:160px;margin:0 auto 12px;display:block}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal-box{background:#fff;border-radius:16px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
+.modal-header{padding:1.25rem 1.25rem 0;display:flex;align-items:flex-start;gap:10px}
+.modal-title{font-size:18px;font-weight:700;flex:1}
+.modal-close{border:none;background:none;font-size:24px;cursor:pointer;color:#666;padding:0;line-height:1}
+.modal-body{padding:1rem 1.25rem 1.25rem}
+.modal-img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px}
+.modal-tag{display:inline-block;background:#ede9fe;color:#5b21b6;border-radius:6px;font-size:12px;padding:2px 10px;margin-right:6px;margin-bottom:8px;font-weight:500}
+.modal-tag.gruen{background:#dcfce7;color:#166534}
+.modal-desc{font-size:14px;color:#444;line-height:1.7;white-space:pre-wrap}
+.info-btn{border:none;background:none;cursor:pointer;font-size:16px;padding:0 4px;vertical-align:middle;opacity:0.7}
+.info-btn:hover{opacity:1}
+.ag-beschr-bereich{background:#f5f4f0;border-radius:8px;padding:12px;margin-top:10px}
+.excel-upload-info{background:#dcfce7;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13px;color:#166534;margin-bottom:1rem}
 </style>
 </head>
 <body>
@@ -221,10 +237,41 @@ tr:last-child td{border-bottom:none}
         </div>
         <div id="eigen-klassen-chips"></div>
       </div>
-      <div style="margin-top:14px">
+      <!-- AG Beschreibung -->
+      <div style="margin-top:12px">
+        <div class="label" style="font-weight:600">AG-Beschreibung (optional)</div>
+        <div class="ag-beschr-bereich">
+          <div class="label">Kurzbeschreibung</div>
+          <textarea id="ag-beschreibung" placeholder="Beschreiben Sie die AG – Inhalt, Ziele, besondere Aktivitäten..." 
+            style="width:100%;padding:8px 10px;border:1px solid #d0cfc9;border-radius:8px;font-size:14px;font-family:inherit;min-height:80px;resize:vertical"></textarea>
+          <div class="label">Lehrkraft</div>
+          <input id="ag-lehrkraft" type="text" placeholder="z.B. Hr. Müller" />
+          <div class="label">Raum / Treffpunkt</div>
+          <input id="ag-raum" type="text" placeholder="z.B. Sporthalle, Raum 204" />
+          <div class="label">Wochentag & Uhrzeit</div>
+          <input id="ag-zeit" type="text" placeholder="z.B. Dienstag 14:00–15:30 Uhr" />
+          <div class="label">Bild hochladen (optional)</div>
+          <input type="file" id="ag-bild-upload" accept="image/*" style="margin-top:4px" onchange="vorschauBild(this)" />
+          <img id="ag-bild-vorschau" src="" alt="" style="display:none;width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-top:8px" />
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
         <button class="primary" onclick="addAG()">+ AG anlegen</button>
       </div>
     </div>
+
+    <!-- Excel Import -->
+    <div class="card">
+      <div class="section-title">AGs per Excel importieren</div>
+      <div class="excel-upload-info">📋 Laden Sie eine Excel-Datei hoch um mehrere AGs auf einmal anzulegen.</div>
+      <div class="info-box" style="margin-bottom:12px">
+        <strong>Format der Excel-Datei (Spalten):</strong><br>
+        A: AG-Name | B: Typ (uebergreifend/eigen) | C: Jahrgang von | D: Jahrgang bis | E: Max. Plätze | F: Lehrkraft | G: Raum | H: Zeit | I: Beschreibung
+      </div>
+      <input type="file" id="excel-upload" accept=".xlsx,.xls,.csv" onchange="importiereExcel(this)" />
+      <div id="excel-import-result" style="margin-top:10px"></div>
+    </div>
+
     <div id="ag-liste-container"><div class="empty">Noch keine AGs angelegt.</div></div>
   </div>
 
@@ -295,6 +342,21 @@ tr:last-child td{border-bottom:none}
   <div class="card">
     <div class="section-title">Eingetragene Schüler <span id="count-schueler" style="color:#666;font-weight:400">(0)</span></div>
     <div id="schueler-tabelle"><div class="empty">Noch niemand eingetragen.</div></div>
+  </div>
+</div>
+
+<!-- AG BESCHREIBUNGS-MODAL -->
+<div id="ag-modal" class="modal-overlay" style="display:none" onclick="schliesseModal(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-ag-name">–</div>
+      <button class="modal-close" onclick="document.getElementById('ag-modal').style.display='none'">×</button>
+    </div>
+    <div class="modal-body">
+      <img id="modal-ag-bild" class="modal-img" src="" alt="" style="display:none" />
+      <div id="modal-ag-tags" style="margin-bottom:10px"></div>
+      <div id="modal-ag-desc" class="modal-desc"></div>
+    </div>
   </div>
 </div>
 
@@ -536,6 +598,23 @@ function addEigenKlasse(){
 function removeEigenKlasse(i){neueAgEigenKlassen.splice(i,1);renderNeueEigenKlassen();}
 
 // ─── ADMIN: AG ────────────────────────────────────────────────────────────────
+function vorschauBild(input){
+  var img=document.getElementById('ag-bild-vorschau');
+  if(input.files&&input.files[0]){
+    var reader=new FileReader();
+    reader.onload=function(e){img.src=e.target.result;img.style.display='block';};
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function lesBildAlsBase64(file){
+  return new Promise(function(resolve){
+    var reader=new FileReader();
+    reader.onload=function(e){resolve(e.target.result);};
+    reader.readAsDataURL(file);
+  });
+}
+
 async function addAG(){
   var name=document.getElementById('ag-name').value.trim();
   var typ=document.getElementById('ag-typ').value;
@@ -543,14 +622,33 @@ async function addAG(){
   if(state.ags.some(function(a){return a.name.toLowerCase()===name.toLowerCase();})){showAlert('AG existiert bereits.','err');return;}
   if(typ==='uebergreifend'&&!neueAgKontingente.length){showAlert('Bitte mindestens eine Jahrgangsgruppe anlegen.','err');return;}
   if(typ==='eigen'&&!neueAgEigenKlassen.length){showAlert('Bitte mindestens eine Klasse hinzufügen.','err');return;}
+
+  // Bild verarbeiten
+  var bildData='';
+  var bildInput=document.getElementById('ag-bild-upload');
+  if(bildInput.files&&bildInput.files[0]){
+    bildData=await lesBildAlsBase64(bildInput.files[0]);
+  }
+
   state.ags.push({
     id:'ag_'+Date.now(),
     name:name,typ:typ,
     kontingente:typ==='uebergreifend'?neueAgKontingente.slice():[],
-    eigenKlassen:typ==='eigen'?neueAgEigenKlassen.slice():[]
+    eigenKlassen:typ==='eigen'?neueAgEigenKlassen.slice():[],
+    beschreibung:document.getElementById('ag-beschreibung').value.trim(),
+    lehrkraft:document.getElementById('ag-lehrkraft').value.trim(),
+    raum:document.getElementById('ag-raum').value.trim(),
+    zeit:document.getElementById('ag-zeit').value.trim(),
+    bild:bildData
   });
   neueAgKontingente=[];neueAgEigenKlassen=[];
   document.getElementById('ag-name').value='';
+  document.getElementById('ag-beschreibung').value='';
+  document.getElementById('ag-lehrkraft').value='';
+  document.getElementById('ag-raum').value='';
+  document.getElementById('ag-zeit').value='';
+  document.getElementById('ag-bild-upload').value='';
+  document.getElementById('ag-bild-vorschau').style.display='none';
   renderNeueKontingente();renderNeueEigenKlassen();
   setSyncStatus('loading','Speichert...');
   try{
@@ -559,6 +657,79 @@ async function addAG(){
     showAlert('AG "'+name+'" angelegt.','ok');
   }catch(e){setSyncStatus('err','Fehler');showAlert('Fehler: '+e.message,'err');}
   renderAGListe();
+}
+
+async function importiereExcel(input){
+  var file=input.files[0];
+  if(!file) return;
+  var resEl=document.getElementById('excel-import-result');
+  resEl.innerHTML='<div style="color:#666;font-size:13px">Wird verarbeitet...</div>';
+  
+  // CSV oder Excel?
+  if(file.name.endsWith('.csv')){
+    var text=await file.text();
+    var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
+    var importiert=0;
+    lines.slice(1).forEach(function(line){
+      var cols=line.split(',').map(function(c){return c.replace(/^"|"$/g,'').trim();});
+      if(!cols[0]) return;
+      var name=cols[0];
+      if(state.ags.some(function(a){return a.name.toLowerCase()===name.toLowerCase();})) return;
+      state.ags.push({
+        id:'ag_'+Date.now()+Math.random(),
+        name:name,
+        typ:cols[1]||'uebergreifend',
+        kontingente:cols[1]!=='eigen'?[{von:parseInt(cols[2])||5,bis:parseInt(cols[3])||10,max:parseInt(cols[4])||20}]:[],
+        eigenKlassen:[],
+        lehrkraft:cols[5]||'',
+        raum:cols[6]||'',
+        zeit:cols[7]||'',
+        beschreibung:cols[8]||'',
+        bild:''
+      });
+      importiert++;
+    });
+    await speichereAGs();
+    resEl.innerHTML='<div style="color:#166534;font-size:13px;background:#dcfce7;padding:8px 12px;border-radius:6px">✓ '+importiert+' AGs importiert</div>';
+    renderAGListe();
+    return;
+  }
+
+  // Excel XLSX
+  var reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      var importiert=0;
+      rows.slice(1).forEach(function(cols){
+        if(!cols[0]) return;
+        var name=String(cols[0]).trim();
+        if(state.ags.some(function(a){return a.name.toLowerCase()===name.toLowerCase();})) return;
+        state.ags.push({
+          id:'ag_'+Date.now()+Math.random(),
+          name:name,
+          typ:String(cols[1]||'uebergreifend').trim(),
+          kontingente:String(cols[1]||'')!=='eigen'?[{von:parseInt(cols[2])||5,bis:parseInt(cols[3])||10,max:parseInt(cols[4])||20}]:[],
+          eigenKlassen:[],
+          lehrkraft:String(cols[5]||'').trim(),
+          raum:String(cols[6]||'').trim(),
+          zeit:String(cols[7]||'').trim(),
+          beschreibung:String(cols[8]||'').trim(),
+          bild:''
+        });
+        importiert++;
+      });
+      await speichereAGs();
+      resEl.innerHTML='<div style="color:#166534;font-size:13px;background:#dcfce7;padding:8px 12px;border-radius:6px">✓ '+importiert+' AGs aus Excel importiert</div>';
+      renderAGListe();
+    }catch(err){
+      resEl.innerHTML='<div style="color:#991b1b;font-size:13px">Fehler: '+err.message+'</div>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value='';
 }
 
 async function deleteAG(id){
@@ -736,6 +907,34 @@ async function delSchuelerAdmin(id){
 }
 
 // ─── LEHRER ───────────────────────────────────────────────────────────────────
+function zeigeAGInfo(btn){
+  var agId=btn.getAttribute('data-agid');
+  var ag=getAGById(agId);
+  if(!ag) return;
+  document.getElementById('modal-ag-name').textContent=ag.name;
+  var tags='';
+  if(ag.typ==='uebergreifend'&&ag.kontingente&&ag.kontingente.length){
+    ag.kontingente.forEach(function(k){
+      tags+='<span class="modal-tag">Jg. '+k.von+'–'+k.bis+' | max. '+k.max+' Plätze</span>';
+    });
+  }
+  if(ag.lehrkraft) tags+='<span class="modal-tag gruen">👤 '+esc(ag.lehrkraft)+'</span>';
+  if(ag.raum) tags+='<span class="modal-tag gruen">📍 '+esc(ag.raum)+'</span>';
+  if(ag.zeit) tags+='<span class="modal-tag gruen">🕐 '+esc(ag.zeit)+'</span>';
+  document.getElementById('modal-ag-tags').innerHTML=tags;
+  document.getElementById('modal-ag-desc').textContent=ag.beschreibung||'Keine Beschreibung vorhanden.';
+  var bildEl=document.getElementById('modal-ag-bild');
+  if(ag.bild){bildEl.src=ag.bild;bildEl.style.display='block';}
+  else{bildEl.style.display='none';}
+  document.getElementById('ag-modal').style.display='flex';
+}
+
+function schliesseModal(event){
+  if(event.target===document.getElementById('ag-modal')){
+    document.getElementById('ag-modal').style.display='none';
+  }
+}
+
 function renderLehrerPage(){
   if(!aktiveKlasse) return;
   document.getElementById('lehrer-nav-title').textContent='Klasse '+aktiveKlasse;
@@ -751,8 +950,10 @@ function renderLehrerPage(){
         var cls=pct>=100?'full':pct>=80?'warn':'';
         var freiLabel=frei<=0?'<span class="badge badge-red">Voll – wird gelost</span>':'<span class="badge badge-green">'+frei+' frei</span>';
         var grLabel=ag.typ==='uebergreifend'?'<span class="badge badge-purple" style="font-size:11px">Jg. '+k.von+'–'+k.bis+'</span>':'';
+        var infoBtn='<button class="info-btn" onclick="zeigeAGInfo(this)" data-agid="'+ag.id+'" title="AG-Info anzeigen">ℹ️</button>';
         return '<div class="kontingent-row" style="margin-bottom:10px">'
-          +'<span style="font-weight:500;min-width:110px">'+esc(ag.name)+'</span>'+grLabel
+          +'<span style="font-weight:500;min-width:110px">'+esc(ag.name)+infoBtn+'</span>'
+          +grLabel
           +'<span style="font-size:12px;color:#666;min-width:55px">'+belegt+'/'+k.max+'</span>'
           +'<div class="auslastung-bar"><div class="progress"><div class="progress-bar '+cls+'" style="width:'+Math.min(pct,100)+'%"></div></div></div>'
           +freiLabel+'</div>';
