@@ -1353,7 +1353,8 @@ async function addSchueler(){
   state.schueler.push(neuer);
   losverfahren(neuer);
 
-  // Lernzeit-AGs zusätzlich zuweisen wenn nötig
+  // Lernzeit-AG zusätzlich zuweisen wenn nötig
+  // Regel: nur EINE Lernzeit-AG – die erste mit noch freien Plätzen
   neuer.lernzeitZuteilung = [];
   if(neuer.zuteilung){
     var zugeteiltAG2 = getAGById(neuer.zuteilung);
@@ -1361,10 +1362,33 @@ async function addSchueler(){
     var agTag2 = zugeteiltAG2 ? zugeteiltAG2.wochentag : null;
     var tagWeicht = agTag2 && regularerTag2 && agTag2 !== regularerTag2;
     if(tagWeicht){
-      var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse);
-      neuer.lernzeitZuteilung = lzAGs
-        .filter(function(ag){ return ag.id !== neuer.zuteilung; })
-        .map(function(ag){ return ag.id; });
+      var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse)
+        .filter(function(ag){ return ag.id !== neuer.zuteilung; });
+      // Erste Lernzeit-AG mit freien Plätzen wählen
+      var gewaehleLzAG = null;
+      for(var li=0; li<lzAGs.length; li++){
+        var lzAG = lzAGs[li];
+        // Plätze berechnen
+        var lzKonts = getKontFuerKlasse(lzAG, neuer.klasse);
+        var lzMax = lzKonts.reduce(function(s,k){return s+k.max;},0);
+        var lzBelegt = state.schueler.filter(function(s){
+          if(s.id === neuer.id) return false;
+          var lzIds = Array.isArray(s.lernzeitZuteilung) ? s.lernzeitZuteilung : (s.lernzeitZuteilung ? [s.lernzeitZuteilung] : []);
+          return lzIds.indexOf(lzAG.id) !== -1;
+        }).length;
+        // Wenn keine Kapazität definiert oder noch Platz → diese wählen
+        if(lzMax === 0 || lzBelegt < lzMax){
+          gewaehleLzAG = lzAG;
+          break;
+        }
+      }
+      // Falls alle voll: trotzdem letzte nehmen
+      if(!gewaehleLzAG && lzAGs.length > 0){
+        gewaehleLzAG = lzAGs[lzAGs.length-1];
+      }
+      if(gewaehleLzAG){
+        neuer.lernzeitZuteilung = [gewaehleLzAG.id];
+      }
     }
   }
 
