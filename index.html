@@ -41,6 +41,9 @@ button:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 .metric-num{font-size:26px;font-weight:600}
 .metric-label{font-size:13px;color:#666;margin-top:4px}
 table{width:100%;border-collapse:collapse;font-size:14px}
+#uebersicht-tabelle table{font-size:12px}
+#uebersicht-tabelle th{padding:6px 8px}
+#uebersicht-tabelle td{padding:6px 8px;white-space:nowrap}
 th{text-align:left;padding:8px 10px;font-weight:500;font-size:13px;color:#666;border-bottom:1px solid #e5e4e0}
 td{padding:8px 10px;border-bottom:1px solid #f0efe9;vertical-align:middle}
 tr:last-child td{border-bottom:none}
@@ -256,7 +259,6 @@ tr:last-child td{border-bottom:none}
             <option value="Dienstag">Dienstag</option>
             <option value="Mittwoch">Mittwoch</option>
             <option value="Donnerstag">Donnerstag</option>
-            <option value="Freitag">Freitag</option>
           </select>
           <div class="label">Uhrzeit</div>
           <input id="ag-zeit" type="text" placeholder="z.B. 14:00–15:30 Uhr" />
@@ -319,62 +321,75 @@ tr:last-child td{border-bottom:none}
         <button class="small outline" onclick="exportAlleCSV()">⬇ CSV</button>
       </div>
       <input type="text" id="filter-uebersicht" placeholder="Nach Name oder Klasse filtern..." style="margin-bottom:12px" oninput="renderUebersicht()" />
-      <div id="uebersicht-tabelle"><div class="empty">Noch keine Daten.</div></div>
+      <div id="uebersicht-tabelle" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div class="empty">Noch keine Daten.</div></div>
     </div>
   </div>
   <!-- TAB: AG-Tage -->
   <div id="admin-agtage" style="display:none">
     <div class="card">
       <div class="section-title">Reguläre AG-Tage der Klassenstufen</div>
-      <div class="info-box">Diese Einstellungen gelten für das aktuelle Schuljahr und beeinflussen die automatische Lernzeit-Zuteilung.</div>
-      <div style="display:grid;gap:12px;margin-top:4px">
-        <div class="row">
-          <span style="min-width:180px;font-size:14px">Klassenstufen 5 &amp; 6</span>
-          <select id="agtag-5-6" onchange="speichereAGTage()" style="flex:1">
-            <option value="">– Tag wählen –</option>
-            <option value="Montag">Montag</option>
-            <option value="Dienstag">Dienstag</option>
-            <option value="Mittwoch">Mittwoch</option>
-            <option value="Donnerstag">Donnerstag</option>
-            <option value="Freitag">Freitag</option>
-          </select>
-        </div>
-        <div class="row">
-          <span style="min-width:180px;font-size:14px">Klassenstufe 7</span>
-          <select id="agtag-7" onchange="speichereAGTage()" style="flex:1">
-            <option value="">– Tag wählen –</option>
-            <option value="Montag">Montag</option>
-            <option value="Dienstag">Dienstag</option>
-            <option value="Mittwoch">Mittwoch</option>
-            <option value="Donnerstag">Donnerstag</option>
-            <option value="Freitag">Freitag</option>
-          </select>
-        </div>
-        <div class="row">
-          <span style="min-width:180px;font-size:14px">Klassenstufe 8</span>
-          <select id="agtag-8" onchange="speichereAGTage()" style="flex:1">
-            <option value="">– Tag wählen –</option>
-            <option value="Montag">Montag</option>
-            <option value="Dienstag">Dienstag</option>
-            <option value="Mittwoch">Mittwoch</option>
-            <option value="Donnerstag">Donnerstag</option>
-            <option value="Freitag">Freitag</option>
-          </select>
-        </div>
-        <div class="row">
-          <span style="min-width:180px;font-size:14px">Klassenstufen 9 &amp; 10</span>
-          <select id="agtag-9-10" onchange="speichereAGTage()" style="flex:1">
-            <option value="">– Tag wählen –</option>
-            <option value="Montag">Montag</option>
-            <option value="Dienstag">Dienstag</option>
-            <option value="Mittwoch">Mittwoch</option>
-            <option value="Donnerstag">Donnerstag</option>
-            <option value="Freitag">Freitag</option>
-          </select>
-        </div>
-
+      <table style="width:100%;border-collapse:collapse;margin-top:8px">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:10px 12px;font-size:13px;color:#666;border-bottom:1px solid #e5e4e0">Klassenstufe</th>
+            <th style="text-align:left;padding:10px 12px;font-size:13px;color:#666;border-bottom:1px solid #e5e4e0">Regulärer AG-Tag</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f0efe9">
+            <td style="padding:10px 12px;font-size:14px;font-weight:500">Klassenstufe 5</td>
+            <td style="padding:10px 12px"><select id="agtag-5" style="max-width:200px">
+              <option value="">– Tag wählen –</option>
+              <option value="Montag">Montag</option><option value="Dienstag">Dienstag</option>
+              <option value="Mittwoch">Mittwoch</option><option value="Donnerstag">Donnerstag</option>
+            </select></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f0efe9">
+            <td style="padding:10px 12px;font-size:14px;font-weight:500">Klassenstufe 6</td>
+            <td style="padding:10px 12px"><select id="agtag-6" style="max-width:200px">
+              <option value="">– Tag wählen –</option>
+              <option value="Montag">Montag</option><option value="Dienstag">Dienstag</option>
+              <option value="Mittwoch">Mittwoch</option><option value="Donnerstag">Donnerstag</option>
+            </select></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f0efe9">
+            <td style="padding:10px 12px;font-size:14px;font-weight:500">Klassenstufe 7</td>
+            <td style="padding:10px 12px"><select id="agtag-7" style="max-width:200px">
+              <option value="">– Tag wählen –</option>
+              <option value="Montag">Montag</option><option value="Dienstag">Dienstag</option>
+              <option value="Mittwoch">Mittwoch</option><option value="Donnerstag">Donnerstag</option>
+            </select></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f0efe9">
+            <td style="padding:10px 12px;font-size:14px;font-weight:500">Klassenstufe 8</td>
+            <td style="padding:10px 12px"><select id="agtag-8" style="max-width:200px">
+              <option value="">– Tag wählen –</option>
+              <option value="Montag">Montag</option><option value="Dienstag">Dienstag</option>
+              <option value="Mittwoch">Mittwoch</option><option value="Donnerstag">Donnerstag</option>
+            </select></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f0efe9">
+            <td style="padding:10px 12px;font-size:14px;font-weight:500">Klassenstufe 9</td>
+            <td style="padding:10px 12px"><select id="agtag-9" style="max-width:200px">
+              <option value="">– Tag wählen –</option>
+              <option value="Montag">Montag</option><option value="Dienstag">Dienstag</option>
+              <option value="Mittwoch">Mittwoch</option><option value="Donnerstag">Donnerstag</option>
+            </select></td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;font-size:14px;font-weight:500">Klassenstufe 10</td>
+            <td style="padding:10px 12px"><select id="agtag-10" style="max-width:200px">
+              <option value="">– Tag wählen –</option>
+              <option value="Montag">Montag</option><option value="Dienstag">Dienstag</option>
+              <option value="Mittwoch">Mittwoch</option><option value="Donnerstag">Donnerstag</option>
+            </select></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <button class="primary" onclick="speichereAGTage()">💾 Speichern</button>
+        <div id="agtage-status" style="font-size:13px;color:#166534;display:none">✓ Gespeichert</div>
       </div>
-      <div id="agtage-status" style="margin-top:12px;font-size:13px;color:#166534;display:none">✓ Gespeichert</div>
     </div>
   </div>
 
@@ -439,7 +454,6 @@ tr:last-child td{border-bottom:none}
         <option value="Dienstag">Dienstag</option>
         <option value="Mittwoch">Mittwoch</option>
         <option value="Donnerstag">Donnerstag</option>
-        <option value="Freitag">Freitag</option>
       </select>
       <div class="label">Uhrzeit</div>
       <input id="edit-ag-zeit" type="text" placeholder="z.B. 14:00–15:30 Uhr" style="margin-bottom:8px" />
@@ -496,30 +510,28 @@ var AG_TAGE = {
 
 function getRegularerAGTag(klasse){
   var jg = jahrgang(klasse);
-  // Erst aus state.agTage lesen, dann Fallback auf Standardwerte
-  if(state.agTage){
-    if(jg===5||jg===6) return state.agTage['5-6']||AG_TAGE[jg]||null;
-    if(jg===9||jg===10) return state.agTage['9-10']||AG_TAGE[jg]||null;
-    if(state.agTage[String(jg)]) return state.agTage[String(jg)];
+  if(!jg) return null;
+  // Aus state.agTage lesen (einzelne Jahrgangsstufen)
+  if(state.agTage && state.agTage[String(jg)]){
+    return state.agTage[String(jg)];
   }
+  // Fallback auf Standardwerte
   return AG_TAGE[jg] || null;
 }
 
 function ladeAGTageInSelects(){
   var tage = state.agTage || {};
-  var felder = {'5-6':'agtag-5-6','7':'agtag-7','8':'agtag-8','9-10':'agtag-9-10'};
-  Object.keys(felder).forEach(function(key){
-    var sel = document.getElementById(felder[key]);
-    if(sel && tage[key]) sel.value = tage[key];
+  ['5','6','7','8','9','10'].forEach(function(jg){
+    var sel = document.getElementById('agtag-'+jg);
+    if(sel && tage[jg]) sel.value = tage[jg];
   });
 }
 
 async function speichereAGTage(){
-  var felder = {'5-6':'agtag-5-6','7':'agtag-7','8':'agtag-8','9-10':'agtag-9-10'};
   var tage = {};
-  Object.keys(felder).forEach(function(key){
-    var sel = document.getElementById(felder[key]);
-    if(sel && sel.value) tage[key] = sel.value;
+  ['5','6','7','8','9','10'].forEach(function(jg){
+    var sel = document.getElementById('agtag-'+jg);
+    if(sel && sel.value) tage[jg] = sel.value;
   });
   state.agTage = tage;
   try{
@@ -552,7 +564,7 @@ function getLernzeitAGFuerKlasse(klasse){
 // state.lernzeitAGs = { 'Montag': ['ag_1','ag_2'], 'Dienstag': ['ag_3'] }
 
 function renderLernzeitContainer(){
-  var tage = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag'];
+  var tage = ['Montag','Dienstag','Mittwoch','Donnerstag'];
   var container = document.getElementById('lernzeit-container');
   if(!container) return;
   var lz = state.lernzeitAGs || {};
