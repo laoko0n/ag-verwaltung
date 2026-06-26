@@ -320,7 +320,12 @@ tr:last-child td{border-bottom:none}
         <div class="section-title" style="margin-bottom:0;flex:1">Alle Anmeldungen & Zuteilungen</div>
         <button class="small outline" onclick="exportAlleCSV()">⬇ CSV</button>
       </div>
-      <input type="text" id="filter-uebersicht" placeholder="Nach Name oder Klasse filtern..." style="margin-bottom:12px" oninput="renderUebersicht()" />
+      <div class="grid2" style="margin-bottom:12px;gap:8px">
+        <input type="text" id="filter-uebersicht" placeholder="Nach Name oder Klasse filtern..." oninput="renderUebersicht()" />
+        <select id="filter-ag-uebersicht" onchange="renderUebersicht()">
+          <option value="">– Alle AGs –</option>
+        </select>
+      </div>
       <div id="uebersicht-tabelle" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div class="empty">Noch keine Daten.</div></div>
     </div>
   </div>
@@ -1215,6 +1220,17 @@ function renderUebersicht(){
   document.getElementById('stat-s').textContent=state.schueler.length;
   document.getElementById('stat-k').textContent=state.klassen.length;
   document.getElementById('stat-ag').textContent=state.ags.length;
+
+  // AG-Filter Dropdown befüllen
+  var agSel = document.getElementById('filter-ag-uebersicht');
+  if(agSel){
+    var currentVal = agSel.value;
+    agSel.innerHTML = '<option value="">– Alle AGs –</option>'
+      + state.ags.map(function(ag){
+          return '<option value="'+ag.id+'"'+(ag.id===currentVal?' selected':'')+'>'+esc(ag.name)+'</option>';
+        }).join('');
+    agSel.value = currentVal;
+  }
   var auslEl=document.getElementById('auslastung-gesamt');
   var ueAGs=state.ags.filter(function(a){return a.typ==='uebergreifend';});
   auslEl.innerHTML=!ueAGs.length?'<div class="empty">Keine klassenübergreifenden AGs.</div>':
@@ -1232,9 +1248,18 @@ function renderUebersicht(){
       }).join('');
     }).join('');
   var filter=(document.getElementById('filter-uebersicht').value||'').toLowerCase();
+  var filterAG=(document.getElementById('filter-ag-uebersicht')||{}).value||'';
   var el=document.getElementById('uebersicht-tabelle');
   var rows=state.schueler.filter(function(s){
-    return !filter||(s.nachname+s.vorname+s.klasse).toLowerCase().includes(filter);
+    if(filter && !(s.nachname+s.vorname+s.klasse).toLowerCase().includes(filter)) return false;
+    if(filterAG){
+      var inZuteilung = s.zuteilung === filterAG;
+      var lzIds = Array.isArray(s.lernzeitZuteilung) ? s.lernzeitZuteilung : (s.lernzeitZuteilung ? [s.lernzeitZuteilung] : []);
+      var inLernzeit = lzIds.indexOf(filterAG) !== -1;
+      var inWunsch = (s.wuensche||[]).some(function(w){ return w.agId === filterAG; });
+      if(!inZuteilung && !inLernzeit && !inWunsch) return false;
+    }
+    return true;
   });
   rows.sort(function(a,b){
     var ja=jahrgang(a.klasse)||0,jb=jahrgang(b.klasse)||0;
