@@ -41,9 +41,11 @@ button:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 .metric-num{font-size:26px;font-weight:600}
 .metric-label{font-size:13px;color:#666;margin-top:4px}
 table{width:100%;border-collapse:collapse;font-size:14px}
-#uebersicht-tabelle table{font-size:12px}
-#uebersicht-tabelle th{padding:6px 8px}
-#uebersicht-tabelle td{padding:6px 8px;white-space:nowrap}
+#uebersicht-tabelle table{font-size:13px}
+#uebersicht-tabelle th{padding:7px 10px}
+#uebersicht-tabelle td{padding:7px 10px}
+.col-wunsch{display:none}
+.col-wunsch.sichtbar{display:table-cell}
 th{text-align:left;padding:8px 10px;font-weight:500;font-size:13px;color:#666;border-bottom:1px solid #e5e4e0}
 td{padding:8px 10px;border-bottom:1px solid #f0efe9;vertical-align:middle}
 tr:last-child td{border-bottom:none}
@@ -320,13 +322,16 @@ tr:last-child td{border-bottom:none}
         <div class="section-title" style="margin-bottom:0;flex:1">Alle Anmeldungen & Zuteilungen</div>
         <button class="small outline" onclick="exportAlleCSV()">⬇ CSV</button>
       </div>
-      <div class="grid2" style="margin-bottom:12px;gap:8px">
+      <div class="grid2" style="margin-bottom:8px;gap:8px">
         <input type="text" id="filter-uebersicht" placeholder="Nach Name oder Klasse filtern..." oninput="renderUebersicht()" />
         <select id="filter-ag-uebersicht" onchange="renderUebersicht()">
           <option value="">– Alle AGs –</option>
         </select>
       </div>
-      <div id="uebersicht-tabelle" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div class="empty">Noch keine Daten.</div></div>
+      <div style="margin-bottom:12px">
+        <button class="small" id="btn-toggle-wuensche" onclick="toggleWuenscheSpalten()" style="font-size:13px">👁 2. &amp; 3. Wahl einblenden</button>
+      </div>
+      <div id="uebersicht-tabelle"><div class="empty">Noch keine Daten.</div></div>
     </div>
   </div>
   <!-- TAB: AG-Tage -->
@@ -1216,6 +1221,16 @@ function renderAdminKlassen(){
 }
 
 // ─── ADMIN: ÜBERSICHT ─────────────────────────────────────────────────────────
+var wuenscheSichtbar = false;
+
+function toggleWuenscheSpalten(){
+  wuenscheSichtbar = !wuenscheSichtbar;
+  var btn = document.getElementById('btn-toggle-wuensche');
+  var cols = document.querySelectorAll('.col-wunsch');
+  cols.forEach(function(c){ c.classList.toggle('sichtbar', wuenscheSichtbar); });
+  btn.textContent = wuenscheSichtbar ? '👁 2. & 3. Wahl ausblenden' : '👁 2. & 3. Wahl einblenden';
+}
+
 function renderUebersicht(){
   document.getElementById('stat-s').textContent=state.schueler.length;
   document.getElementById('stat-k').textContent=state.klassen.length;
@@ -1268,7 +1283,7 @@ function renderUebersicht(){
     return a.nachname.localeCompare(b.nachname);
   });
   if(!rows.length){el.innerHTML='<div class="empty">Keine Einträge.</div>';return;}
-  el.innerHTML='<table><thead><tr><th>Klasse</th><th>Name</th><th>1. Wahl</th><th>2. Wahl</th><th>3. Wahl</th><th>Reguläre AG</th><th>Lernzeit-AG</th><th></th></tr></thead><tbody>'
+  el.innerHTML='<table><thead><tr><th>Klasse</th><th>Name</th><th>1. Wahl</th><th class="col-wunsch'+(wuenscheSichtbar?' sichtbar':'')+'">2. Wahl</th><th class="col-wunsch'+(wuenscheSichtbar?' sichtbar':'')+'">3. Wahl</th><th>Zuteilung</th><th>Zusätzl. Zuteilung</th><th></th></tr></thead><tbody>'
     +rows.map(function(s){
       var zName=s.zuteilung?esc(getAGNameById(s.zuteilung)):'<span style="color:#b91c1c">Keine</span>';
       var ist1=s.zuteilung&&s.wuensche&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
@@ -1276,7 +1291,9 @@ function renderUebersicht(){
       var lzName=lzIds2.length?lzIds2.map(function(id){return '<span class="badge badge-warn" style="margin:2px">'+esc(getAGNameById(id))+'</span>';}).join(' '):'<span style="color:#999;font-size:13px">–</span>';
       return '<tr><td><span class="badge badge-blue">'+esc(s.klasse)+'</span></td>'
         +'<td>'+esc(s.nachname)+', '+esc(s.vorname)+'</td>'
-        +'<td>'+esc(getWahl(s,1))+'</td><td>'+esc(getWahl(s,2))+'</td><td>'+esc(getWahl(s,3))+'</td>'
+        +'<td>'+esc(getWahl(s,1))+'</td>'
+        +'<td class="col-wunsch'+(wuenscheSichtbar?' sichtbar':'')+'">'+esc(getWahl(s,2))+'</td>'
+        +'<td class="col-wunsch'+(wuenscheSichtbar?' sichtbar':'')+'">'+esc(getWahl(s,3))+'</td>'
         +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+'</td>'
         +'<td>'+lzName+'</td>'
         +'<td><button class="danger small" onclick="delSchuelerAdmin(\''+s.id+'\')">🗑️</button></td></tr>';
