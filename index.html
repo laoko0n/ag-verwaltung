@@ -217,13 +217,13 @@ tr:last-child td{border-bottom:none}
           <select id="kg-von" style="width:auto;flex:1">
             <option value="5">Jg. 5</option><option value="6">Jg. 6</option><option value="7">Jg. 7</option>
             <option value="8">Jg. 8</option><option value="9">Jg. 9</option><option value="10">Jg. 10</option>
-            <option value="11">Jg. 11</option><option value="12">Jg. 12</option><option value="13">Jg. 13</option>
+            
           </select>
           <span style="font-size:13px;color:#666">bis</span>
           <select id="kg-bis" style="width:auto;flex:1">
             <option value="5">Jg. 5</option><option value="6">Jg. 6</option><option value="7" selected>Jg. 7</option>
             <option value="8">Jg. 8</option><option value="9">Jg. 9</option><option value="10">Jg. 10</option>
-            <option value="11">Jg. 11</option><option value="12">Jg. 12</option><option value="13">Jg. 13</option>
+            
           </select>
           <input id="kg-max" type="number" min="1" value="15" style="width:80px;flex:none" />
           <button class="small" onclick="addKontingent()">+ Gruppe</button>
@@ -288,25 +288,9 @@ tr:last-child td{border-bottom:none}
   <div id="admin-klassen" style="display:none">
     <div class="card">
       <div class="section-title">Lernzeit-AGs festlegen</div>
-      <div class="info-box">Legen Sie pro Wochentag fest, welche AG die Lernzeit-AG ist. Schüler die eine AG außerhalb ihres regulären AG-Tags bekommen, werden automatisch zusätzlich in die Lernzeit-AG ihres Tages eingetragen.</div>
-      <div style="margin-bottom:10px">
-        <div class="label">Klassenstufen 5+6 → Dienstag</div>
-        <select id="lernzeit-dienstag" onchange="speichereLernzeitAGs()">
-          <option value="">– Lernzeit-AG wählen –</option>
-        </select>
-        <div class="label">Klassenstufe 7 → Mittwoch</div>
-        <select id="lernzeit-mittwoch" onchange="speichereLernzeitAGs()">
-          <option value="">– Lernzeit-AG wählen –</option>
-        </select>
-        <div class="label">Klassenstufe 8 → Montag</div>
-        <select id="lernzeit-montag" onchange="speichereLernzeitAGs()">
-          <option value="">– Lernzeit-AG wählen –</option>
-        </select>
-        <div class="label">Klassenstufen 9+10 → Donnerstag</div>
-        <select id="lernzeit-donnerstag" onchange="speichereLernzeitAGs()">
-          <option value="">– Lernzeit-AG wählen –</option>
-        </select>
-      </div>
+      <div class="info-box">Wählen Sie pro Wochentag eine oder mehrere Lernzeit-AGs. Schüler die eine AG außerhalb ihres regulären AG-Tags bekommen, werden automatisch zusätzlich in eine Lernzeit-AG ihres Tages eingetragen.</div>
+      <div id="lernzeit-container" style="margin-bottom:10px"></div>
+      <button class="small primary" onclick="speichereLernzeitAGs()">💾 Lernzeit-AGs speichern</button>
     </div>
     <div class="card">
       <div class="section-title">Klassen anlegen</div>
@@ -388,39 +372,7 @@ tr:last-child td{border-bottom:none}
             <option value="Freitag">Freitag</option>
           </select>
         </div>
-        <div class="row">
-          <span style="min-width:180px;font-size:14px">Klassenstufe 11</span>
-          <select id="agtag-11" onchange="speichereAGTage()" style="flex:1">
-            <option value="">– Tag wählen –</option>
-            <option value="Montag">Montag</option>
-            <option value="Dienstag">Dienstag</option>
-            <option value="Mittwoch">Mittwoch</option>
-            <option value="Donnerstag">Donnerstag</option>
-            <option value="Freitag">Freitag</option>
-          </select>
-        </div>
-        <div class="row">
-          <span style="min-width:180px;font-size:14px">Klassenstufe 12</span>
-          <select id="agtag-12" onchange="speichereAGTage()" style="flex:1">
-            <option value="">– Tag wählen –</option>
-            <option value="Montag">Montag</option>
-            <option value="Dienstag">Dienstag</option>
-            <option value="Mittwoch">Mittwoch</option>
-            <option value="Donnerstag">Donnerstag</option>
-            <option value="Freitag">Freitag</option>
-          </select>
-        </div>
-        <div class="row">
-          <span style="min-width:180px;font-size:14px">Klassenstufe 13</span>
-          <select id="agtag-13" onchange="speichereAGTage()" style="flex:1">
-            <option value="">– Tag wählen –</option>
-            <option value="Montag">Montag</option>
-            <option value="Dienstag">Dienstag</option>
-            <option value="Mittwoch">Mittwoch</option>
-            <option value="Donnerstag">Donnerstag</option>
-            <option value="Freitag">Freitag</option>
-          </select>
-        </div>
+
       </div>
       <div id="agtage-status" style="margin-top:12px;font-size:13px;color:#166534;display:none">✓ Gespeichert</div>
     </div>
@@ -555,7 +507,7 @@ function getRegularerAGTag(klasse){
 
 function ladeAGTageInSelects(){
   var tage = state.agTage || {};
-  var felder = {'5-6':'agtag-5-6','7':'agtag-7','8':'agtag-8','9-10':'agtag-9-10','11':'agtag-11','12':'agtag-12','13':'agtag-13'};
+  var felder = {'5-6':'agtag-5-6','7':'agtag-7','8':'agtag-8','9-10':'agtag-9-10'};
   Object.keys(felder).forEach(function(key){
     var sel = document.getElementById(felder[key]);
     if(sel && tage[key]) sel.value = tage[key];
@@ -563,7 +515,7 @@ function ladeAGTageInSelects(){
 }
 
 async function speichereAGTage(){
-  var felder = {'5-6':'agtag-5-6','7':'agtag-7','8':'agtag-8','9-10':'agtag-9-10','11':'agtag-11','12':'agtag-12','13':'agtag-13'};
+  var felder = {'5-6':'agtag-5-6','7':'agtag-7','8':'agtag-8','9-10':'agtag-9-10'};
   var tage = {};
   Object.keys(felder).forEach(function(key){
     var sel = document.getElementById(felder[key]);
@@ -580,24 +532,82 @@ async function speichereAGTage(){
   }
 }
 
-function getLernzeitAGFuerKlasse(klasse){
+function getLernzeitAGsFuerKlasse(klasse){
+  // Gibt Liste aller Lernzeit-AGs für den regulären AG-Tag zurück
   var tag = getRegularerAGTag(klasse);
-  if(!tag || !state.lernzeitAGs) return null;
-  var agId = state.lernzeitAGs[tag];
-  if(!agId) return null;
-  return getAGById(agId);
+  if(!tag || !state.lernzeitAGs) return [];
+  var ids = state.lernzeitAGs[tag];
+  if(!ids) return [];
+  if(!Array.isArray(ids)) ids = [ids];
+  return ids.map(function(id){ return getAGById(id); }).filter(Boolean);
+}
+
+function getLernzeitAGFuerKlasse(klasse){
+  // Rückwärtskompatibilität: gibt erste Lernzeit-AG zurück
+  var ags = getLernzeitAGsFuerKlasse(klasse);
+  return ags.length ? ags[0] : null;
+}
+
+// Lernzeit-AGs: pro Tag können mehrere AGs gewählt werden
+// state.lernzeitAGs = { 'Montag': ['ag_1','ag_2'], 'Dienstag': ['ag_3'] }
+
+function renderLernzeitContainer(){
+  var tage = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag'];
+  var container = document.getElementById('lernzeit-container');
+  if(!container) return;
+  var lz = state.lernzeitAGs || {};
+  container.innerHTML = tage.map(function(tag){
+    var selectedIds = Array.isArray(lz[tag]) ? lz[tag] : (lz[tag] ? [lz[tag]] : []);
+    return '<div style="margin-bottom:14px">'
+      +'<div class="label" style="font-weight:600">'+tag+'</div>'
+      +'<select id="lernzeit-add-'+tag+'" style="margin-bottom:6px">'
+      +'<option value="">+ AG hinzufügen...</option>'
+      +state.ags.map(function(ag){
+        return '<option value="'+ag.id+'">'+esc(ag.name)+'</option>';
+      }).join('')
+      +'</select>'
+      +'<button class="small" data-tag="'+tag+'" onclick="lernzeitAGHinzufuegenBtn(this)" style="margin-bottom:8px">+ Hinzufügen</button>'
+      +'<div id="lernzeit-chips-'+tag+'" style="display:flex;flex-wrap:wrap;gap:6px">'
+      +selectedIds.map(function(agId){
+        var ag = getAGById(agId);
+        return ag ? '<span class="ag-chip">'+esc(ag.name)
+          +'<button class="ag-chip-del" data-tag="'+tag+'" data-agid="'+agId+'" onclick="lernzeitAGEntfernenBtn(this)">×</button></span>' : '';
+      }).join('')
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function lernzeitAGHinzufuegenBtn(btn){
+  lernzeitAGHinzufuegen(btn.getAttribute('data-tag'));
+}
+function lernzeitAGEntfernenBtn(btn){
+  lernzeitAGEntfernen(btn.getAttribute('data-tag'), btn.getAttribute('data-agid'));
+}
+function lernzeitAGHinzufuegen(tag){
+  var sel = document.getElementById('lernzeit-add-'+tag);
+  if(!sel || !sel.value) return;
+  var agId = sel.value;
+  if(!state.lernzeitAGs) state.lernzeitAGs = {};
+  if(!Array.isArray(state.lernzeitAGs[tag])){
+    state.lernzeitAGs[tag] = state.lernzeitAGs[tag] ? [state.lernzeitAGs[tag]] : [];
+  }
+  if(!state.lernzeitAGs[tag].includes(agId)){
+    state.lernzeitAGs[tag].push(agId);
+  }
+  sel.value = '';
+  renderLernzeitContainer();
+}
+
+function lernzeitAGEntfernen(tag, agId){
+  if(!state.lernzeitAGs || !state.lernzeitAGs[tag]) return;
+  state.lernzeitAGs[tag] = state.lernzeitAGs[tag].filter(function(id){ return id !== agId; });
+  renderLernzeitContainer();
 }
 
 async function speichereLernzeitAGs(){
-  var tage = ['Montag','Dienstag','Mittwoch','Donnerstag'];
-  var lernzeit = {};
-  tage.forEach(function(tag){
-    var sel = document.getElementById('lernzeit-'+tag.toLowerCase());
-    if(sel && sel.value) lernzeit[tag] = sel.value;
-  });
-  state.lernzeitAGs = lernzeit;
   try{
-    await db.ref('/lernzeitAGs').set(lernzeit);
+    await db.ref('/lernzeitAGs').set(state.lernzeitAGs||{});
     showAlert('Lernzeit-AGs gespeichert ✓','ok');
   }catch(e){
     showAlert('Fehler: '+e.message,'err');
@@ -605,16 +615,7 @@ async function speichereLernzeitAGs(){
 }
 
 function befuelleLernzeitSelects(){
-  var tage = ['Montag','Dienstag','Mittwoch','Donnerstag'];
-  tage.forEach(function(tag){
-    var sel = document.getElementById('lernzeit-'+tag.toLowerCase());
-    if(!sel) return;
-    var currentVal = state.lernzeitAGs && state.lernzeitAGs[tag] ? state.lernzeitAGs[tag] : '';
-    sel.innerHTML = '<option value="">– Lernzeit-AG wählen –</option>'
-      + state.ags.map(function(ag){
-          return '<option value="'+ag.id+'"'+(ag.id===currentVal?' selected':'')+'>'+esc(ag.name)+'</option>';
-        }).join('');
-  });
+  renderLernzeitContainer();
 }
 
 async function ladeAlles(feedback) {
@@ -1234,7 +1235,8 @@ function renderUebersicht(){
     +rows.map(function(s){
       var zName=s.zuteilung?esc(getAGNameById(s.zuteilung)):'<span style="color:#b91c1c">Keine</span>';
       var ist1=s.zuteilung&&s.wuensche&&s.wuensche[0]&&s.zuteilung===s.wuensche[0].agId;
-      var lzName=s.lernzeitZuteilung?'<span class="badge badge-warn">'+esc(getAGNameById(s.lernzeitZuteilung))+'</span>':'<span style="color:#999;font-size:13px">–</span>';
+      var lzIds2=Array.isArray(s.lernzeitZuteilung)?s.lernzeitZuteilung:(s.lernzeitZuteilung?[s.lernzeitZuteilung]:[]);
+      var lzName=lzIds2.length?lzIds2.map(function(id){return '<span class="badge badge-warn" style="margin:2px">'+esc(getAGNameById(id))+'</span>';}).join(' '):'<span style="color:#999;font-size:13px">–</span>';
       return '<tr><td><span class="badge badge-blue">'+esc(s.klasse)+'</span></td>'
         +'<td>'+esc(s.nachname)+', '+esc(s.vorname)+'</td>'
         +'<td>'+esc(getWahl(s,1))+'</td><td>'+esc(getWahl(s,2))+'</td><td>'+esc(getWahl(s,3))+'</td>'
@@ -1339,19 +1341,18 @@ async function addSchueler(){
   state.schueler.push(neuer);
   losverfahren(neuer);
 
-  // Lernzeit-AG zusätzlich zuweisen wenn nötig
-  neuer.lernzeitZuteilung = null;
+  // Lernzeit-AGs zusätzlich zuweisen wenn nötig
+  neuer.lernzeitZuteilung = [];
   if(neuer.zuteilung){
     var zugeteiltAG2 = getAGById(neuer.zuteilung);
     var regularerTag2 = getRegularerAGTag(neuer.klasse);
     var agTag2 = zugeteiltAG2 ? zugeteiltAG2.wochentag : null;
-    // Wenn AG-Tag vom regulären Tag abweicht ODER kein Tag gesetzt → Lernzeit prüfen
     var tagWeicht = agTag2 && regularerTag2 && agTag2 !== regularerTag2;
     if(tagWeicht){
-      var lzAG2 = getLernzeitAGFuerKlasse(neuer.klasse);
-      if(lzAG2 && lzAG2.id !== neuer.zuteilung){
-        neuer.lernzeitZuteilung = lzAG2.id;
-      }
+      var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse);
+      neuer.lernzeitZuteilung = lzAGs
+        .filter(function(ag){ return ag.id !== neuer.zuteilung; })
+        .map(function(ag){ return ag.id; });
     }
   }
 
@@ -1365,7 +1366,8 @@ async function addSchueler(){
     setSyncStatus('ok','Gespeichert ✓');
     var zugeteilt=neuer.zuteilung?getAGNameById(neuer.zuteilung):'keine AG';
     var ist1=neuer.zuteilung&&wuensche[0]&&neuer.zuteilung===wuensche[0].agId;
-    var lzName = neuer.lernzeitZuteilung ? ' + Lernzeit: '+getAGNameById(neuer.lernzeitZuteilung) : '';
+    var lzIds3 = Array.isArray(neuer.lernzeitZuteilung) ? neuer.lernzeitZuteilung : [];
+    var lzName = lzIds3.length ? ' + Lernzeit: '+lzIds3.map(function(id){return getAGNameById(id);}).join(', ') : '';
     if(ist1) showAlert(vn+' '+nn+' → '+zugeteilt+' (1. Wahl) ✓'+lzName,'ok');
     else if(neuer.zuteilung) showAlert(vn+' '+nn+' durch Los zugeteilt: '+zugeteilt+lzName,'ok');
     else showAlert(vn+' '+nn+' → Lernzeit-AG zugewiesen','ok');
@@ -1407,7 +1409,7 @@ function buildCSV(rows){
     rows.map(function(s){
       return [s.klasse,s.nachname,s.vorname,getWahl(s,1),getWahl(s,2),getWahl(s,3),
         s.zuteilung?getAGNameById(s.zuteilung):'Keine Zuteilung',
-        s.lernzeitZuteilung?getAGNameById(s.lernzeitZuteilung):''];
+        (Array.isArray(s.lernzeitZuteilung)&&s.lernzeitZuteilung.length?s.lernzeitZuteilung.map(function(id){return getAGNameById(id);}).join(', '):'')];
     })
   );
   return '\uFEFF'+lines.map(function(r){
