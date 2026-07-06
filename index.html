@@ -200,6 +200,7 @@ tr:last-child td{border-bottom:none}
     <button class="tab" onclick="adminTab('klassen')">Klassen</button>
     <button class="tab" onclick="adminTab('uebersicht')">Gesamtübersicht</button>
     <button class="tab" onclick="adminTab('agtage')">AG-Tage</button>
+    <button class="tab" onclick="adminTab('stammdaten')">Stammdaten</button>
   </div>
 
   <div id="admin-ags">
@@ -334,6 +335,29 @@ tr:last-child td{border-bottom:none}
       <div id="uebersicht-tabelle"><div class="empty">Noch keine Daten.</div></div>
     </div>
   </div>
+  <!-- TAB: Stammdaten -->
+  <div id="admin-stammdaten" style="display:none">
+    <div class="card">
+      <div class="section-title">Eintragungszeitraum für Lehrkräfte</div>
+      <div class="info-box">Legen Sie fest, in welchem Zeitraum die Lehrkräfte Schüler eintragen dürfen. Außerhalb dieses Zeitraums ist die Eintragung gesperrt.</div>
+      <div class="grid2" style="margin-top:8px">
+        <div>
+          <div class="label">Startdatum (ab wann dürfen Lehrer eintragen)</div>
+          <input type="date" id="stamm-startdatum" style="margin-top:4px" onchange="speichereStammdaten()" />
+        </div>
+        <div>
+          <div class="label">Enddatum (bis wann dürfen Lehrer eintragen)</div>
+          <input type="date" id="stamm-enddatum" style="margin-top:4px" onchange="speichereStammdaten()" />
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <button class="primary" onclick="speichereStammdaten()">💾 Speichern</button>
+        <div id="stammdaten-status" style="font-size:13px;color:#166534;display:none">✓ Gespeichert</div>
+      </div>
+      <div id="stammdaten-vorschau" style="margin-top:16px;padding:12px;background:#f5f4f0;border-radius:8px;font-size:13px;display:none"></div>
+    </div>
+  </div>
+
   <!-- TAB: AG-Tage -->
   <div id="admin-agtage" style="display:none">
     <div class="card">
@@ -529,6 +553,83 @@ function getRegularerAGTag(klasse){
   return AG_TAGE[jg] || null;
 }
 
+// ─── STAMMDATEN ──────────────────────────────────────────────────────────────
+function ladeStammdaten(){
+  var sd = state.stammdaten || {};
+  var startEl = document.getElementById('stamm-startdatum');
+  var endEl = document.getElementById('stamm-enddatum');
+  if(startEl && sd.startdatum) startEl.value = sd.startdatum;
+  if(endEl && sd.enddatum) endEl.value = sd.enddatum;
+  aktualisiereStammdatenVorschau();
+}
+
+function aktualisiereStammdatenVorschau(){
+  var sd = state.stammdaten || {};
+  var vorschau = document.getElementById('stammdaten-vorschau');
+  if(!vorschau) return;
+  if(!sd.startdatum && !sd.enddatum){
+    vorschau.style.display='none'; return;
+  }
+  vorschau.style.display='block';
+  var start = sd.startdatum ? new Date(sd.startdatum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
+  var end = sd.enddatum ? new Date(sd.enddatum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
+  var status = pruefEintragungErlaubt();
+  var statusText = status.erlaubt
+    ? '<span style="color:#166534;font-weight:500">✓ Eintragung aktuell möglich</span>'
+    : '<span style="color:#b91c1c;font-weight:500">✗ '+status.grund+'</span>';
+  vorschau.innerHTML = '<div>Eintragung erlaubt von <strong>'+start+'</strong> bis <strong>'+end+'</strong></div>'
+    +'<div style="margin-top:6px">'+statusText+'</div>';
+}
+
+function pruefEintragungErlaubt(){
+  var sd = state.stammdaten || {};
+  if(!sd.startdatum && !sd.enddatum) return {erlaubt:true, grund:''};
+  var heute = new Date();
+  heute.setHours(0,0,0,0);
+  if(sd.startdatum){
+    var start = new Date(sd.startdatum);
+    start.setHours(0,0,0,0);
+    if(heute < start){
+      var startStr = start.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+      return {erlaubt:false, grund:'Eintragung startet erst am '+startStr};
+    }
+  }
+  if(sd.enddatum){
+    var end = new Date(sd.enddatum);
+    end.setHours(23,59,59,999);
+    if(heute > end){
+      var endStr = new Date(sd.enddatum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+      return {erlaubt:false, grund:'Eintragungszeitraum endete am '+endStr};
+    }
+  }
+  return {erlaubt:true, grund:''};
+}
+
+async function speichereStammdaten(){
+  var startEl = document.getElementById('stamm-startdatum');
+  var endEl = document.getElementById('stamm-enddatum');
+  var stammdaten = {
+    startdatum: startEl ? startEl.value : '',
+    enddatum: endEl ? endEl.value : ''
+  };
+  // Validierung
+  if(stammdaten.startdatum && stammdaten.enddatum && stammdaten.startdatum > stammdaten.enddatum){
+    showAlert('Startdatum darf nicht nach dem Enddatum liegen.','err');
+    return;
+  }
+  state.stammdaten = stammdaten;
+  try{
+    await db.ref('/stammdaten').set(stammdaten);
+    var status = document.getElementById('stammdaten-status');
+    status.style.display='block';
+    setTimeout(function(){status.style.display='none';},2000);
+    aktualisiereStammdatenVorschau();
+    showAlert('Stammdaten gespeichert ✓','ok');
+  }catch(e){
+    showAlert('Fehler: '+e.message,'err');
+  }
+}
+
 function ladeAGTageInSelects(){
   var tage = state.agTage || {};
   ['5','6','7','8','9','10'].forEach(function(jg){
@@ -651,7 +752,8 @@ async function ladeAlles(feedback) {
       schueler: data.schueler ? Object.values(data.schueler) : [],
       passwoerter: data.passwoerter || {},
       lernzeitAGs: data.lernzeitAGs || {},
-      agTage: data.agTage || {}
+      agTage: data.agTage || {},
+      stammdaten: data.stammdaten || {}
     };
     // Passwörter immer als String
     Object.keys(state.passwoerter).forEach(function(k){
@@ -875,12 +977,13 @@ function goPage(name){
   if(name==='start') ladeAlles(false);
 }
 function adminTab(name){
-  ['ags','klassen','uebersicht','agtage'].forEach(function(t,i){
+  ['ags','klassen','uebersicht','agtage','stammdaten'].forEach(function(t,i){
     document.getElementById('admin-'+t).style.display=t===name?'block':'none';
     document.querySelectorAll('.tabs .tab')[i].classList.toggle('active',t===name);
   });
   if(name==='uebersicht') renderUebersicht();
   if(name==='agtage') ladeAGTageInSelects();
+  if(name==='stammdaten') ladeStammdaten();
 }
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
@@ -1338,6 +1441,23 @@ function schliesseModal(event){
 function renderLehrerPage(){
   if(!aktiveKlasse) return;
   document.getElementById('lehrer-nav-title').textContent='Klasse '+aktiveKlasse;
+
+  // Zeitraumprüfung anzeigen
+  var zeitCheck = pruefEintragungErlaubt();
+  var btn = document.getElementById('btn-add-schueler');
+  var existingHinweis = document.getElementById('zeitraum-hinweis');
+  if(existingHinweis) existingHinweis.remove();
+  if(!zeitCheck.erlaubt && btn){
+    btn.disabled = true;
+    var hinweis = document.createElement('div');
+    hinweis.id = 'zeitraum-hinweis';
+    hinweis.className = 'warn-box';
+    hinweis.style.marginBottom = '12px';
+    hinweis.textContent = '⚠️ ' + zeitCheck.grund;
+    btn.parentNode.insertBefore(hinweis, btn);
+  } else if(btn){
+    btn.disabled = false;
+  }
   var verfAGs=state.ags.filter(function(ag){return agVerfuegbar(ag,aktiveKlasse);});
   var auslEl=document.getElementById('auslastung-lehrer');
   auslEl.innerHTML=!verfAGs.length?'<div class="empty">Keine AGs für diese Klasse.</div>':
@@ -1376,6 +1496,12 @@ function renderLehrerPage(){
 }
 
 async function addSchueler(){
+  // Zeitraum prüfen
+  var zeitCheck = pruefEintragungErlaubt();
+  if(!zeitCheck.erlaubt){
+    showAlert('⚠️ '+zeitCheck.grund,'err');
+    return;
+  }
   var vn=document.getElementById('sch-vorname').value.trim();
   var nn=document.getElementById('sch-nachname').value.trim();
   if(!vn||!nn){showAlert('Bitte Vor- und Nachname eingeben.','err');return;}
