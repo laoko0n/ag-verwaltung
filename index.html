@@ -925,6 +925,21 @@ function getWahl(s,prio){
 
 // ─── LOSVERFAHREN ─────────────────────────────────────────────────────────────
 function losverfahren(neuerSchueler){
+  // WICHTIG: Neuen Schüler TEMPORÄR aus state.schueler entfernen
+  // damit die Belegungszählung korrekt ist (basiert auf gespeicherten Daten)
+  var schuelerOhneNeu = state.schueler.filter(function(x){
+    return x.id !== neuerSchueler.id;
+  });
+
+  // Hilfsfunktion: zählt belegte Plätze basierend auf bereits gespeicherten Schülern
+  function zahleBelegtFuerLos(ag, konts){
+    return schuelerOhneNeu.filter(function(x){
+      var jg = jahrgang(x.klasse);
+      return konts.some(function(k){ return jg>=k.von && jg<=k.bis; })
+        && x.zuteilung === ag.id;
+    }).length;
+  }
+
   var warteschlange=[{schueler:neuerSchueler,prio:1}];
   var runden=0;
   while(warteschlange.length>0&&runden<50){
@@ -945,14 +960,21 @@ function losverfahren(neuerSchueler){
     var konts=getKontFuerKlasse(ag,s.klasse);
     if(!konts.length){warteschlange.push({schueler:s,prio:prio+1});continue;}
     var maxP=konts.reduce(function(sum,k){return sum+k.max;},0);
-    var zugeteilt=state.schueler.filter(function(x){
-      if(x.id===s.id) return false;
+
+    // Nur bereits gespeicherte Schüler zählen (nicht den neuen)
+    var anzahlBelegt = zahleBelegtFuerLos(ag, konts);
+    // Alle bereits gespeicherten Schüler in dieser AG
+    var zugeteilt = schuelerOhneNeu.filter(function(x){
       var jg=jahrgang(x.klasse);
-      return konts.some(function(k){return jg>=k.von&&jg<=k.bis;})&&x.zuteilung===ag.id;
+      return konts.some(function(k){return jg>=k.von&&jg<=k.bis;})
+        && x.zuteilung===ag.id;
     });
-    if(zugeteilt.length<maxP){
+
+    if(anzahlBelegt < maxP){
+      // Platz frei → direkt zuteilen
       s.zuteilung=ag.id;
     } else {
+      // AG voll → alle Bewerber inkl. neuem Schüler losen
       var bewerber=zugeteilt.concat([s]);
       for(var i=bewerber.length-1;i>0;i--){
         var j=Math.floor(Math.random()*(i+1));
