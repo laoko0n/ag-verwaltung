@@ -1668,9 +1668,26 @@ function exportAlleCSV(){
 // ─── START ────────────────────────────────────────────────────────────────────
 (async function(){
   try {
-    // Anonym einloggen – unsichtbar im Hintergrund
-    await auth.signInAnonymously();
-    console.log('Firebase Auth: Anonym eingeloggt');
+    // Warten bis Auth bereit ist
+    await new Promise(function(resolve) {
+      var unsubscribe = auth.onAuthStateChanged(function(user) {
+        unsubscribe();
+        if(user) {
+          // Bereits eingeloggt
+          resolve();
+        } else {
+          // Anonym einloggen
+          auth.signInAnonymously()
+            .then(resolve)
+            .catch(function(e) {
+              console.warn('Auth Fehler:', e.message);
+              resolve(); // Trotzdem weitermachen
+            });
+        }
+      });
+      // Timeout nach 5 Sekunden – dann trotzdem laden
+      setTimeout(resolve, 5000);
+    });
   } catch(e) {
     console.warn('Auth Fehler:', e.message);
   }
