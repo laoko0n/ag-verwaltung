@@ -7,6 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:15px;color:#1a1a1a;background:#f5f4f0;min-height:100vh}
@@ -526,6 +528,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 var state = {ags:[], klassen:[], schueler:[], passwoerter:{}};
@@ -1665,6 +1668,15 @@ function exportAlleCSV(){
 
 // ─── START ────────────────────────────────────────────────────────────────────
 (async function(){
+  try {
+    await auth.signInWithEmailAndPassword(
+      'app@ag-verwaltung.de',
+      'AGVerwaltung2024!'
+    );
+    console.log('Firebase: Eingeloggt');
+  } catch(e) {
+    console.warn('Login Fehler:', e.message);
+  }
   await ladeAlles(false);
   document.getElementById('loading-overlay').style.display='none';
   document.getElementById('page-start').classList.add('active');
