@@ -1668,19 +1668,26 @@ function exportAlleCSV(){
 
 // ─── START ────────────────────────────────────────────────────────────────────
 (async function(){
-  try {
-    await auth.signInWithEmailAndPassword(
-      'app@ag-verwaltung.de',
-      'AGVerwaltung2024!'
-    );
-    console.log('Firebase: Eingeloggt');
-  } catch(e) {
-    console.warn('Login Fehler:', e.message);
-  }
+  await new Promise(function(resolve){
+    auth.onAuthStateChanged(function(user){
+      if(user){
+        resolve();
+      } else {
+        auth.signInWithEmailAndPassword(
+          'app@ag-verwaltung.de',
+          'AGVerwaltung2024!'
+        ).then(resolve).catch(function(e){
+          console.warn('Login Fehler:', e.message);
+          resolve();
+        });
+      }
+    });
+  });
   await ladeAlles(false);
   document.getElementById('loading-overlay').style.display='none';
   document.getElementById('page-start').classList.add('active');
 })();
+
 </script>
 </body>
 </html>
