@@ -762,7 +762,15 @@ async function ladeAlles(feedback) {
     state = {
       ags: data.ags ? Object.values(data.ags) : [],
       klassen: data.klassen ? Object.values(data.klassen) : [],
-      schueler: data.schueler ? Object.values(data.schueler) : [],
+      schueler: data.schueler ? Object.values(data.schueler).map(function(s){
+        // lernzeitZuteilung normalisieren
+        if(!s.lernzeitZuteilung) s.lernzeitZuteilung = [];
+        else if(!Array.isArray(s.lernzeitZuteilung)) s.lernzeitZuteilung = [s.lernzeitZuteilung];
+        // wuensche normalisieren
+        if(!s.wuensche) s.wuensche = [];
+        else if(!Array.isArray(s.wuensche)) s.wuensche = Object.values(s.wuensche);
+        return s;
+      }) : [],
       passwoerter: data.passwoerter || {},
       lernzeitAGs: (function(){
         var raw = data.lernzeitAGs || {};
