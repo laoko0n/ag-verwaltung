@@ -656,10 +656,10 @@ async function speichereAGTage(){
 }
 
 function getLernzeitAGsFuerKlasse(klasse){
-  // Gibt Liste aller Lernzeit-AGs für den regulären AG-Tag zurück
-  var tag = getRegularerAGTag(klasse);
-  if(!tag || !state.lernzeitAGs) return [];
-  var ids = state.lernzeitAGs[tag];
+  // Gibt Liste aller Lernzeit-AGs für diese Klassenstufe zurück
+  var jg = String(jahrgang(klasse));
+  if(!jg || !state.lernzeitAGs) return [];
+  var ids = state.lernzeitAGs[jg];
   if(!ids) return [];
   if(!Array.isArray(ids)) ids = [ids];
   return ids.map(function(id){ return getAGById(id); }).filter(Boolean);
@@ -675,30 +675,43 @@ function getLernzeitAGFuerKlasse(klasse){
 // state.lernzeitAGs = { 'Montag': ['ag_1','ag_2'], 'Dienstag': ['ag_3'] }
 
 function renderLernzeitContainer(){
-  var tage = ['Montag','Dienstag','Mittwoch','Donnerstag'];
+  var stufen = ['5','6','7','8','9','10'];
   var container = document.getElementById('lernzeit-container');
   if(!container) return;
   var lz = state.lernzeitAGs || {};
-  container.innerHTML = tage.map(function(tag){
-    var selectedIds = Array.isArray(lz[tag]) ? lz[tag] : (lz[tag] ? [lz[tag]] : []);
-    return '<div style="margin-bottom:14px">'
-      +'<div class="label" style="font-weight:600">'+tag+'</div>'
-      +'<select id="lernzeit-add-'+tag+'" style="margin-bottom:6px">'
-      +'<option value="">+ AG hinzufügen...</option>'
-      +state.ags.map(function(ag){
-        return '<option value="'+ag.id+'">'+esc(ag.name)+'</option>';
-      }).join('')
-      +'</select>'
-      +'<button class="small" data-tag="'+tag+'" onclick="lernzeitAGHinzufuegenBtn(this)" style="margin-bottom:8px">+ Hinzufügen</button>'
-      +'<div id="lernzeit-chips-'+tag+'" style="display:flex;flex-wrap:wrap;gap:6px">'
-      +selectedIds.map(function(agId){
-        var ag = getAGById(agId);
-        return ag ? '<span class="ag-chip">'+esc(ag.name)
-          +'<button class="ag-chip-del" data-tag="'+tag+'" data-agid="'+agId+'" onclick="lernzeitAGEntfernenBtn(this)">×</button></span>' : '';
-      }).join('')
-      +'</div>'
-      +'</div>';
-  }).join('');
+  container.innerHTML = '<table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr>'
+    +'<th style="text-align:left;padding:8px 10px;font-size:13px;color:#666;border-bottom:1px solid #e5e4e0">Klassenstufe</th>'
+    +'<th style="text-align:left;padding:8px 10px;font-size:13px;color:#666;border-bottom:1px solid #e5e4e0">Lernzeit-AGs</th>'
+    +'<th style="text-align:left;padding:8px 10px;font-size:13px;color:#666;border-bottom:1px solid #e5e4e0">AG hinzufügen</th>'
+    +'</tr></thead><tbody>'
+    +stufen.map(function(jg){
+      var selectedIds = Array.isArray(lz[jg]) ? lz[jg] : (lz[jg] ? [lz[jg]] : []);
+      return '<tr style="border-bottom:1px solid #f0efe9">'
+        +'<td style="padding:8px 10px;font-size:14px;font-weight:500">Klasse '+jg+'</td>'
+        +'<td style="padding:8px 10px">'
+        +'<div id="lernzeit-chips-'+jg+'" style="display:flex;flex-wrap:wrap;gap:4px">'
+        +selectedIds.map(function(agId){
+          var ag = getAGById(agId);
+          return ag ? '<span class="ag-chip">'+esc(ag.name)
+            +'<button class="ag-chip-del" data-tag="'+jg+'" data-agid="'+agId+'" onclick="lernzeitAGEntfernenBtn(this)">×</button></span>' : '';
+        }).join('')
+        +'</div>'
+        +'</td>'
+        +'<td style="padding:8px 10px">'
+        +'<div style="display:flex;gap:6px;align-items:center">'
+        +'<select id="lernzeit-add-'+jg+'" style="flex:1;font-size:13px">'
+        +'<option value="">– AG wählen –</option>'
+        +state.ags.map(function(ag){
+          return '<option value="'+ag.id+'">'+esc(ag.name)+'</option>';
+        }).join('')
+        +'</select>'
+        +'<button class="small" data-tag="'+jg+'" onclick="lernzeitAGHinzufuegenBtn(this)">+</button>'
+        +'</div>'
+        +'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table>';
 }
 
 function lernzeitAGHinzufuegenBtn(btn){
@@ -715,7 +728,7 @@ function lernzeitAGHinzufuegen(tag){
   if(!Array.isArray(state.lernzeitAGs[tag])){
     state.lernzeitAGs[tag] = state.lernzeitAGs[tag] ? [state.lernzeitAGs[tag]] : [];
   }
-  if(!state.lernzeitAGs[tag].includes(agId)){
+  if(state.lernzeitAGs[tag].indexOf(agId) === -1){
     state.lernzeitAGs[tag].push(agId);
   }
   sel.value = '';
@@ -1571,13 +1584,7 @@ async function addSchueler(){
     if(tagWeicht){
       var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse)
         .filter(function(ag){ return ag.id !== neuer.zuteilung; });
-      console.log('DEBUG Lernzeit:', {
-        tagWeicht: tagWeicht,
-        lzAGs: lzAGs.map(function(a){return a?a.name:'null';}),
-        lernzeitAGs: state.lernzeitAGs,
-        regularerTag: regularerTag2,
-        klasse: neuer.klasse
-      });
+
       // Erste Lernzeit-AG mit freien Plätzen wählen
       var gewaehleLzAG = null;
       for(var li=0; li<lzAGs.length; li++){
