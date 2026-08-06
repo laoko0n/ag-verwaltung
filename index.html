@@ -545,10 +545,10 @@ var AG_TAGE = {
 function getRegularerAGTag(klasse){
   var jg = jahrgang(klasse);
   if(!jg) return null;
-  // Aus state.agTage lesen (einzelne Jahrgangsstufen)
-  if(state.agTage && state.agTage['jg'+String(jg)]){
-    return state.agTage['jg'+String(jg)];
-  }
+  var tage = state.agTage || {};
+  // Versuche verschiedene Key-Formate
+  var tag = tage['jg'+jg] || tage[jg] || tage[String(jg)];
+  if(tag) return tag;
   // Fallback auf Standardwerte
   return AG_TAGE[jg] || null;
 }
@@ -643,6 +643,7 @@ async function speichereAGTage(){
   ['5','6','7','8','9','10'].forEach(function(jg){
     var sel = document.getElementById('agtag-'+jg);
     if(sel && sel.value) tage['jg'+jg] = sel.value;
+    else tage['jg'+jg] = ''; // Leerwert damit Firebase kein Array macht
   });
   state.agTage = tage;
   try{
@@ -656,10 +657,10 @@ async function speichereAGTage(){
 }
 
 function getLernzeitAGsFuerKlasse(klasse){
-  // Gibt Liste aller Lernzeit-AGs für diese Klassenstufe zurück
   var jg = String(jahrgang(klasse));
   if(!jg || !state.lernzeitAGs) return [];
-  var ids = state.lernzeitAGs[jg];
+  // Versuche beide Key-Formate
+  var ids = state.lernzeitAGs['jg'+jg] || state.lernzeitAGs[jg];
   if(!ids) return [];
   if(!Array.isArray(ids)) ids = [ids];
   return ids.map(function(id){ return getAGById(id); }).filter(Boolean);
@@ -743,7 +744,15 @@ function lernzeitAGEntfernen(tag, agId){
 
 async function speichereLernzeitAGs(){
   try{
-    await db.ref('/lernzeitAGs').set(state.lernzeitAGs||{});
+    // Konvertiere Keys zu jg-prefix um Firebase Array-Problem zu vermeiden
+    var lzMitPrefix = {};
+    var lz = state.lernzeitAGs || {};
+    Object.keys(lz).forEach(function(k){
+      var key = k.startsWith('jg') ? k : 'jg'+k;
+      lzMitPrefix[key] = lz[k];
+    });
+    state.lernzeitAGs = lzMitPrefix;
+    await db.ref('/lernzeitAGs').set(lzMitPrefix);
     showAlert('Lernzeit-AGs gespeichert ✓','ok');
   }catch(e){
     showAlert('Fehler: '+e.message,'err');
@@ -1604,9 +1613,10 @@ async function addSchueler(){
     var regTag = getRegularerAGTag(neuer.klasse);
     if(!regTag) return;
     if(zugAG.wochentag === regTag) return; // Gleicher Tag - keine Lernzeit nötig
-    var lzIds = state.lernzeitAGs && state.lernzeitAGs[String(jg)];
-    // Fallback: auch ohne jg-prefix prüfen
-    if(!lzIds) lzIds = state.lernzeitAGs && state.lernzeitAGs['jg'+String(jg)];
+    var lzIds = state.lernzeitAGs && (
+      state.lernzeitAGs['jg'+String(jg)] || 
+      state.lernzeitAGs[String(jg)]
+    );
     if(!lzIds) return;
     if(!Array.isArray(lzIds)) lzIds = [lzIds];
     // Erste Lernzeit-AG mit freiem Platz wählen
