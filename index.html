@@ -1581,6 +1581,16 @@ async function addSchueler(){
     var regularerTag2 = getRegularerAGTag(neuer.klasse);
     var agTag2 = zugeteiltAG2 ? zugeteiltAG2.wochentag : null;
     var tagWeicht = agTag2 && regularerTag2 && agTag2 !== regularerTag2;
+    var lzAGsTest = getLernzeitAGsFuerKlasse(neuer.klasse);
+    console.log('DEBUG2:', {
+      tagWeicht: tagWeicht,
+      agTag: agTag2,
+      regularerTag: regularerTag2,
+      klasse: neuer.klasse,
+      jahrgang: jahrgang(neuer.klasse),
+      lernzeitAGs: JSON.stringify(state.lernzeitAGs),
+      lzAGsGefunden: lzAGsTest.map(function(a){return a?a.name:'null';})
+    });
     if(tagWeicht){
       var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse)
         .filter(function(ag){ return ag.id !== neuer.zuteilung; });
