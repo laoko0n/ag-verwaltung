@@ -1581,16 +1581,7 @@ async function addSchueler(){
     var regularerTag2 = getRegularerAGTag(neuer.klasse);
     var agTag2 = zugeteiltAG2 ? zugeteiltAG2.wochentag : null;
     var tagWeicht = agTag2 && regularerTag2 && agTag2 !== regularerTag2;
-    var lzAGsTest = getLernzeitAGsFuerKlasse(neuer.klasse);
-    console.log('DEBUG2:', {
-      tagWeicht: tagWeicht,
-      agTag: agTag2,
-      regularerTag: regularerTag2,
-      klasse: neuer.klasse,
-      jahrgang: jahrgang(neuer.klasse),
-      lernzeitAGs: JSON.stringify(state.lernzeitAGs),
-      lzAGsGefunden: lzAGsTest.map(function(a){return a?a.name:'null';})
-    });
+
     if(tagWeicht){
       var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse)
         .filter(function(ag){ return ag.id !== neuer.zuteilung; });
@@ -1599,23 +1590,24 @@ async function addSchueler(){
       var gewaehleLzAG = null;
       for(var li=0; li<lzAGs.length; li++){
         var lzAG = lzAGs[li];
-        // Plätze berechnen
-        var lzKonts = getKontFuerKlasse(lzAG, neuer.klasse);
-        var lzMax = lzKonts.reduce(function(s,k){return s+k.max;},0);
+        // Gesamtbelegung dieser Lernzeit-AG zählen (unabhängig von Klasse)
         var lzBelegt = state.schueler.filter(function(s){
           if(s.id === neuer.id) return false;
           var lzIds = Array.isArray(s.lernzeitZuteilung) ? s.lernzeitZuteilung : (s.lernzeitZuteilung ? [s.lernzeitZuteilung] : []);
           return lzIds.indexOf(lzAG.id) !== -1;
         }).length;
-        // Wenn keine Kapazität definiert oder noch Platz → diese wählen
+        // Gesamtkapazität der Lernzeit-AG berechnen
+        var lzKonts = lzAG.kontingente || [];
+        var lzMax = lzKonts.reduce(function(s,k){return s+k.max;},0);
+        // Wenn keine Kapazität definiert ODER noch Platz → diese wählen
         if(lzMax === 0 || lzBelegt < lzMax){
           gewaehleLzAG = lzAG;
           break;
         }
       }
-      // Falls alle voll: trotzdem letzte nehmen
+      // Falls alle voll oder keine Kapazität: erste nehmen
       if(!gewaehleLzAG && lzAGs.length > 0){
-        gewaehleLzAG = lzAGs[lzAGs.length-1];
+        gewaehleLzAG = lzAGs[0];
       }
       if(gewaehleLzAG){
         neuer.lernzeitZuteilung = [gewaehleLzAG.id];
