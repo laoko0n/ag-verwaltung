@@ -1601,10 +1601,12 @@ async function addSchueler(){
     if(!zugAG) return;
     var jg = jahrgang(neuer.klasse);
     if(!jg) return;
-    var regTag = state.agTage && state.agTage[String(jg)] ? state.agTage[String(jg)] : null;
+    var regTag = getRegularerAGTag(neuer.klasse);
     if(!regTag) return;
     if(zugAG.wochentag === regTag) return; // Gleicher Tag - keine Lernzeit nötig
     var lzIds = state.lernzeitAGs && state.lernzeitAGs[String(jg)];
+    // Fallback: auch ohne jg-prefix prüfen
+    if(!lzIds) lzIds = state.lernzeitAGs && state.lernzeitAGs['jg'+String(jg)];
     if(!lzIds) return;
     if(!Array.isArray(lzIds)) lzIds = [lzIds];
     // Erste Lernzeit-AG mit freiem Platz wählen
