@@ -89,8 +89,7 @@ tr:last-child td{border-bottom:none}
 .loading-overlay{position:fixed;inset:0;background:rgba(245,244,240,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:12px}
 .loading-overlay .spinner{width:32px;height:32px;border-width:3px}
 .los-badge{background:#fef9c3;color:#854d0e;border:1px solid #fde047;border-radius:6px;font-size:11px;padding:1px 7px;margin-left:4px}
-.pw-input{text-align:center;font-size:28px;letter-spacing:normal;max-width:160px;margin:0 auto 12px;display:block}
-.pw-input:not(:placeholder-shown){letter-spacing:10px;}
+.pw-input{text-align:center;font-size:28px;letter-spacing:10px;max-width:160px;margin:0 auto 12px;display:block}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem}
 .modal-box{background:#fff;border-radius:16px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
@@ -1550,6 +1549,14 @@ async function addSchueler(){
     var zugeteiltAG2 = getAGById(neuer.zuteilung);
     var regularerTag2 = getRegularerAGTag(neuer.klasse);
     var agTag2 = zugeteiltAG2 ? zugeteiltAG2.wochentag : null;
+    console.log('DEBUG Lernzeit:', {
+      klasse: neuer.klasse,
+      zugeteiltAG: zugeteiltAG2 ? zugeteiltAG2.name : 'nicht gefunden',
+      agWochentag: agTag2,
+      regularerTag: regularerTag2,
+      agTage: state.agTage,
+      lernzeitAGs: state.lernzeitAGs
+    });
     var tagWeicht = agTag2 && regularerTag2 && agTag2 !== regularerTag2;
     if(tagWeicht){
       var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse)
