@@ -751,8 +751,26 @@ async function ladeAlles(feedback) {
       klassen: data.klassen ? Object.values(data.klassen) : [],
       schueler: data.schueler ? Object.values(data.schueler) : [],
       passwoerter: data.passwoerter || {},
-      lernzeitAGs: data.lernzeitAGs || {},
-      agTage: data.agTage || {},
+      lernzeitAGs: (function(){
+        var raw = data.lernzeitAGs || {};
+        if(Array.isArray(raw)){
+          var obj = {};
+          raw.forEach(function(val, idx){ if(val) obj[String(idx)] = val; });
+          return obj;
+        }
+        return raw;
+      })(),
+      agTage: (function(){
+        var raw = data.agTage || {};
+        // Firebase gibt manchmal Array zurück wenn Keys Zahlen sind
+        // In Objekt umwandeln
+        if(Array.isArray(raw)){
+          var obj = {};
+          raw.forEach(function(val, idx){ if(val) obj[String(idx)] = val; });
+          return obj;
+        }
+        return raw;
+      })(),
       stammdaten: data.stammdaten || {}
     };
     // Passwörter immer als String
@@ -1549,14 +1567,6 @@ async function addSchueler(){
     var zugeteiltAG2 = getAGById(neuer.zuteilung);
     var regularerTag2 = getRegularerAGTag(neuer.klasse);
     var agTag2 = zugeteiltAG2 ? zugeteiltAG2.wochentag : null;
-    console.log('DEBUG Lernzeit:', {
-      klasse: neuer.klasse,
-      zugeteiltAG: zugeteiltAG2 ? zugeteiltAG2.name : 'nicht gefunden',
-      agWochentag: agTag2,
-      regularerTag: regularerTag2,
-      agTage: state.agTage,
-      lernzeitAGs: state.lernzeitAGs
-    });
     var tagWeicht = agTag2 && regularerTag2 && agTag2 !== regularerTag2;
     if(tagWeicht){
       var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse)
