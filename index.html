@@ -1567,18 +1567,17 @@ async function addSchueler(){
     var zugeteiltAG2 = getAGById(neuer.zuteilung);
     var regularerTag2 = getRegularerAGTag(neuer.klasse);
     var agTag2 = zugeteiltAG2 ? zugeteiltAG2.wochentag : null;
-    console.log('DEBUG:', {
-      klasse: neuer.klasse,
-      ag: zugeteiltAG2 ? zugeteiltAG2.name : 'null',
-      agTag: agTag2,
-      regularerTag: regularerTag2,
-      agTageState: JSON.stringify(state.agTage),
-      lernzeitState: JSON.stringify(state.lernzeitAGs)
-    });
     var tagWeicht = agTag2 && regularerTag2 && agTag2 !== regularerTag2;
     if(tagWeicht){
       var lzAGs = getLernzeitAGsFuerKlasse(neuer.klasse)
         .filter(function(ag){ return ag.id !== neuer.zuteilung; });
+      console.log('DEBUG Lernzeit:', {
+        tagWeicht: tagWeicht,
+        lzAGs: lzAGs.map(function(a){return a?a.name:'null';}),
+        lernzeitAGs: state.lernzeitAGs,
+        regularerTag: regularerTag2,
+        klasse: neuer.klasse
+      });
       // Erste Lernzeit-AG mit freien Plätzen wählen
       var gewaehleLzAG = null;
       for(var li=0; li<lzAGs.length; li++){
