@@ -1651,7 +1651,12 @@ function renderSchuelerTabelle(){
       return '<tr><td style="font-weight:500">'+esc(s.nachname)+', '+esc(s.vorname)+'</td>'
         +'<td>'+esc(getWahl(s,1))+'</td>'
         +'<td>'+zName+(ist1?'':' <span class="los-badge">gelost</span>')+'</td>'
-        +'<td>'+(s.lernzeitZuteilung?'<span class="badge badge-warn">'+esc(getAGNameById(s.lernzeitZuteilung))+'</span>':'<span style="color:#999;font-size:13px">–</span>')+'</td>'
+        +'<td>'+(function(){
+          var lzIds=Array.isArray(s.lernzeitZuteilung)?s.lernzeitZuteilung:(s.lernzeitZuteilung?[s.lernzeitZuteilung]:[]);
+          return lzIds.length
+            ?lzIds.map(function(id){return '<span class="badge badge-warn" style="margin:2px">'+esc(getAGNameById(id))+'</span>';}).join(' ')
+            :'<span style="color:#999;font-size:13px">–</span>';
+        })()+'</td>'
         +'<td><button class="danger small" onclick="deleteSchueler(\''+s.id+'\')">🗑️</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
